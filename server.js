@@ -15,6 +15,8 @@ const ah = require('./async-handler');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+// Khi chạy sau proxy của nhà cung cấp hosting: lấy đúng địa chỉ khách và giao thức https
+app.set('trust proxy', 1);
 
 const SORTS = {
   newest: { label: 'Mới nhất', sql: 'created_at DESC, p.id ASC' },
@@ -444,7 +446,9 @@ app.use((req, res) => {
     await syncAllMedia();
   } catch (err) {
     console.error('Không kết nối được database. Kiểm tra DATABASE_URL trong file .env.');
-    console.error(err.message);
+    // lỗi kết nối gộp (AggregateError) có message rỗng nên in cả mã lỗi và các lỗi con
+    console.error(err.message || err.code || '', ...(err.errors || []).map((e) => e.message));
+    if (!process.env.DATABASE_URL) console.error('Biến DATABASE_URL đang trống.');
     process.exit(1);
   }
   app.listen(PORT, () => {
