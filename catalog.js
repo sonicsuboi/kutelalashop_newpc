@@ -10,6 +10,26 @@ const CATEGORIES = {
   tui: 'Túi xách',
 };
 
+// Mã sản phẩm: KL + chữ danh mục + số thứ tự 3 chữ số, vd: KLCG001, KLSN012
+const CODE_PREFIXES = {
+  sneaker: 'KLSN',
+  'cao-got': 'KLCG',
+  sandal: 'KLSD',
+  'bup-be': 'KLBB',
+  boot: 'KLBT',
+  dep: 'KLDP',
+  kinh: 'KLKM',
+  tui: 'KLTX',
+};
+
+// Mã kế tiếp của danh mục: số lớn nhất đang có cộng 1
+async function nextCode(db, category) {
+  const prefix = CODE_PREFIXES[category];
+  const rows = await db.query('SELECT code FROM products WHERE code LIKE ?', [`${prefix}%`]);
+  const used = rows.map((r) => r.code.slice(prefix.length)).filter((n) => /^\d+$/.test(n)).map(Number);
+  return prefix + String(Math.max(0, ...used) + 1).padStart(3, '0');
+}
+
 // Sản phẩm không có size (kính, túi) để size_max = 0 và trả về danh sách rỗng
 const sizesOf = (product) => {
   const sizes = [];
@@ -62,4 +82,4 @@ async function changeStock(db, productId, colorId, size, delta) {
   `, [productId, colorId, size, delta, delta]);
 }
 
-module.exports = { CATEGORIES, sizesOf, colorsOf, variantsOf, stockMap, stockOf, setStock, changeStock };
+module.exports = { CATEGORIES, CODE_PREFIXES, nextCode, sizesOf, colorsOf, variantsOf, stockMap, stockOf, setStock, changeStock };

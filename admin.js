@@ -6,7 +6,7 @@ const express = require('express');
 const db = require('./db');
 const { fold } = require('./text');
 const { retailPrice } = require('./pricing');
-const { CATEGORIES, sizesOf, colorsOf, variantsOf, stockMap, setStock } = require('./catalog');
+const { CATEGORIES, CODE_PREFIXES, nextCode, sizesOf, colorsOf, variantsOf, stockMap, setStock } = require('./catalog');
 const { ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, orderCode, cancelOrder, markPaid } = require('./orders');
 const { syncProductMedia, prefixOf } = require('./media');
 const storage = require('./storage');
@@ -51,7 +51,7 @@ router.use((req, res, next) => {
   res.set('Cache-Control', 'no-store');
   res.locals.admin = {
     statuses: ORDER_STATUS, methods: PAYMENT_METHOD, payments: PAYMENT_STATUS,
-    categories: CATEGORIES, orderCode, section: req.path.split('/')[1] || '',
+    categories: CATEGORIES, codePrefixes: CODE_PREFIXES, orderCode, section: req.path.split('/')[1] || '',
   };
   next();
 });
@@ -221,16 +221,14 @@ router.get('/san-pham/moi', (req, res) => {
 });
 
 router.post('/san-pham/moi', ah(async (req, res) => {
-  const code = text(req.body.code);
   const category = Object.hasOwn(CATEGORIES, req.body.category) ? req.body.category : '';
   const { values, errors } = readProductForm(req.body, category || 'sneaker');
-  if (!/^[A-Za-z0-9_-]{2,30}$/.test(code)) errors.code = 'Mã gồm 2–30 ký tự: chữ, số, - hoặc _.';
-  else if (await db.one('SELECT 1 FROM products WHERE code = ?', [code])) errors.code = 'Mã này đã có sản phẩm khác dùng.';
   if (!category) errors.category = 'Vui lòng chọn danh mục.';
   if (Object.keys(errors).length) {
-    return res.status(400).render('admin/product-new', { title: 'Thêm sản phẩm', values: { ...req.body, code }, errors });
+    return res.status(400).render('admin/product-new', { title: 'Thêm sản phẩm', values: req.body, errors });
   }
 
+  const code = await nextCode(db, category);
   const slug = `${fold(values.name).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${code.toLowerCase()}`;
   const { id } = await db.one(`
     INSERT INTO products (slug, code, name, category, badge, cost, price, size_min, size_max, description)

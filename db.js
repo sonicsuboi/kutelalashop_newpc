@@ -234,15 +234,15 @@ async function migrate() {
     }
   }
 
-  // Sản phẩm thật đầu tiên. Ảnh nằm trong bucket Storage ở prefix bup-be/KRM7633/.
-  if (!(await db.one('SELECT 1 FROM products WHERE code = ?', ['KRM7633']))) {
+  // Sản phẩm thật đầu tiên. Ảnh nằm trong bucket Storage ở prefix bup-be/KLBB001/.
+  if (!(await db.one('SELECT 1 FROM products WHERE code = ?', ['KLBB001']))) {
     const cost = 390000;
     const { id } = await db.one(`
       INSERT INTO products (slug, code, name, category, badge, cost, price, size_min, size_max, color, sole_color, description)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       RETURNING id
     `, [
-      'giay-bet-quai-chun-cheo-krm7633', 'KRM7633', 'Giày bệt quai chun chéo da mềm', 'bup-be', 'Mới',
+      'giay-bet-quai-chun-cheo-klbb001', 'KLBB001','Giày bệt quai chun chéo da mềm', 'bup-be', 'Mới',
       cost, retailPrice('bup-be', cost), 35, 39, '#4a2c20', '#1e1410',
       'Giày bệt mũi vuông, quai chun đan chéo ôm chân, có miếng dán điều chỉnh. Da mềm, đế bệt, lót êm. Form chuẩn, fullbox.',
     ]);

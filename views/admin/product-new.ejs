@@ -6,20 +6,14 @@
 <form class="card wide" action="/admin/san-pham/moi" method="post">
   <div class="row">
     <label class="field">
-      <span>Mã sản phẩm</span>
-      <input type="text" name="code" value="<%= values.code || '' %>" maxlength="30" required placeholder="vd: KRM7633">
-      <small>Cũng là tên thư mục ảnh. Không đổi được sau khi tạo.</small>
-      <% if (errors.code) { %><em><%= errors.code %></em><% } %>
-    </label>
-    <label class="field">
       <span>Danh mục</span>
       <select name="category" required>
         <option value="">Chọn danh mục</option>
         <% for (const [key, label] of Object.entries(admin.categories)) { %>
-          <option value="<%= key %>" <%= values.category === key ? 'selected' : '' %>><%= label %></option>
+          <option value="<%= key %>" <%= values.category === key ? 'selected' : '' %>><%= label %> (<%= admin.codePrefixes[key] %>)</option>
         <% } %>
       </select>
-      <small>Không đổi được sau khi tạo.</small>
+      <small>Không đổi được sau khi tạo. Mã sản phẩm tự sinh theo danh mục, vd: KLCG001.</small>
       <% if (errors.category) { %><em><%= errors.category %></em><% } %>
     </label>
   </div>

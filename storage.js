@@ -24,7 +24,7 @@ const CONTENT_TYPES = {
 
 const publicUrl = (key) => `${process.env.SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${key}`;
 
-// Liệt kê toàn bộ file trong một prefix (vd: "bup-be/KRM7633/"), trang nếu vượt 1000 file.
+// Liệt kê toàn bộ file trong một prefix (vd: "bup-be/KLBB001/"), trang nếu vượt 1000 file.
 async function list(prefix) {
   const files = [];
   let offset = 0;

@@ -1,6 +1,6 @@
 // Ảnh và video sản phẩm nằm trong bucket Supabase Storage, prefix theo danh mục rồi tới mã sản phẩm:
 //
-//   <danh mục>/<mã sản phẩm>/        vd: bup-be/KRM7633/
+//   <danh mục>/<mã sản phẩm>/        vd: bup-be/KLBB001/
 //
 // Database (bảng product_images) chỉ lưu URL công khai tới file, không lưu nội dung file.
 // Các hàm dưới đây liệt kê bucket rồi ghi/xoá các dòng tương ứng, nên chỉ cần tải file lên là xong.
