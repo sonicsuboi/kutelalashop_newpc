@@ -22,8 +22,9 @@ module.exports = {
     title: 'Bảo mật thông tin',
     lead: 'Chúng tôi chỉ thu thập những thông tin cần thiết để phục vụ bạn.',
     sections: [
-      ['Thông tin thu thập', 'Họ tên, email và nội dung bạn gửi qua trang Liên hệ. Danh sách yêu thích được lưu ngay trên trình duyệt của bạn, không gửi về máy chủ.'],
-      ['Mục đích sử dụng', 'Phản hồi yêu cầu của bạn và hỗ trợ sau bán hàng. Chúng tôi không bán hay chia sẻ thông tin cho bên thứ ba.'],
+      ['Thông tin thu thập', 'Họ tên, số điện thoại, địa chỉ nhận hàng khi bạn đặt hàng hoặc tạo tài khoản; email hoặc số điện thoại và nội dung bạn gửi qua trang Liên hệ; đánh giá bạn viết cho sản phẩm đã mua.'],
+      ['Thống kê truy cập', 'Web lưu một mã ngẫu nhiên trong trình duyệt của bạn (cookie) để đếm lượt xem trang, sản phẩm được yêu thích và biết khách tới từ kênh nào (Google, Zalo, Facebook…). Mã này không chứa tên hay số điện thoại của bạn, và chúng tôi không lưu địa chỉ IP.'],
+      ['Mục đích sử dụng', 'Giao hàng, phản hồi yêu cầu của bạn, hỗ trợ sau bán hàng và cải thiện web. Chúng tôi không bán hay chia sẻ thông tin cho bên thứ ba.'],
       ['Quyền của bạn', 'Bạn có thể yêu cầu xem, chỉnh sửa hoặc xoá thông tin của mình bất cứ lúc nào bằng cách liên hệ với chúng tôi.'],
     ],
   },
@@ -33,7 +34,9 @@ module.exports = {
     sections: [
       ['Tôi chọn size thế nào?', 'Đo chiều dài bàn chân vào buổi chiều, khi chân nở nhất, rồi nhắn cho tư vấn viên để được gợi ý size. Nếu ở giữa hai size, nên chọn size lớn hơn.'],
       ['Tôi có thể thử giày ở đâu?', 'Tại bất kỳ cửa hàng nào trong hệ thống. Xem địa chỉ ở trang Hệ thống cửa hàng.'],
-      ['Làm sao để đặt hàng?', 'Mở trang sản phẩm bạn thích và bấm “Liên hệ đặt hàng”, tư vấn viên sẽ phản hồi qua email.'],
+      ['Làm sao để đặt hàng?', 'Mở trang sản phẩm bạn thích, chọn màu và size rồi bấm “Thêm vào giỏ hàng”. Trong giỏ hàng, để lại họ tên, số điện thoại và địa chỉ nhận hàng; tư vấn viên sẽ gọi xác nhận đơn.'],
+      ['Tôi xem tình trạng đơn hàng ở đâu?', 'Vào trang Tra cứu đơn hàng, nhập mã đơn và số điện thoại đã đặt. Nếu bạn đặt hàng khi đã đăng nhập, mọi đơn đều có trong trang Tài khoản.'],
+      ['Tạo tài khoản để làm gì?', 'Giỏ hàng tự điền thông tin nhận hàng đã lưu, bạn xem lại được các đơn đã đặt và viết được đánh giá cho sản phẩm đã mua.'],
       ['Danh sách yêu thích lưu ở đâu?', 'Lưu trên trình duyệt bạn đang dùng. Đổi máy hoặc xoá dữ liệu trình duyệt thì danh sách sẽ trống.'],
     ],
   },

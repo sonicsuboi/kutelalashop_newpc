@@ -1,0 +1,41 @@
+<%- include('head') %>
+
+<h1><%= title %></h1>
+<p class="muted">Tin nhắn khách gửi ở trang Liên hệ. Trả lời khách qua điện thoại hoặc email, xong thì đánh dấu đã trả lời.</p>
+
+<div class="tabs">
+  <a href="/admin/tin-nhan" class="<%= showAll ? '' : 'active' %>">Chưa trả lời (<%= waiting %>)</a>
+  <a href="/admin/tin-nhan?xem=tat-ca" class="<%= showAll ? 'active' : '' %>">Tất cả</a>
+</div>
+
+<% if (messages.length) { %>
+  <div class="scroll">
+    <table class="table">
+      <thead><tr><th>Ngày</th><th>Khách</th><th>Liên hệ</th><th>Nội dung</th><th></th></tr></thead>
+      <tbody>
+        <% for (const m of messages) { %>
+          <tr>
+            <td><%= m.created_at.slice(8, 10) %>/<%= m.created_at.slice(5, 7) %>/<%= m.created_at.slice(0, 4) %></td>
+            <td><b><%= m.name %></b></td>
+            <td>
+              <% if (m.phone) { %><a href="tel:<%= m.phone.replace(/\s/g, '') %>"><%= m.phone %></a><br><% } %>
+              <% if (m.email) { %><a href="mailto:<%= m.email %>"><%= m.email %></a><% } %>
+            </td>
+            <td style="white-space: pre-line"><%= m.message %></td>
+            <td>
+              <form action="/admin/tin-nhan/<%= m.id %>" method="post">
+                <input type="hidden" name="done" value="<%= m.done ? 0 : 1 %>">
+                <% if (showAll) { %><input type="hidden" name="xem" value="tat-ca"><% } %>
+                <button class="btn btn-light" type="submit"><%= m.done ? 'Đánh dấu chưa trả lời' : 'Đã trả lời' %></button>
+              </form>
+            </td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+<% } else { %>
+  <p class="muted"><%= showAll ? 'Chưa có tin nhắn nào.' : 'Không có tin nhắn nào đang chờ trả lời.' %></p>
+<% } %>
+
+<%- include('foot') %>

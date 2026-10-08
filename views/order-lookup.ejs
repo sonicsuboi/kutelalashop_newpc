@@ -1,0 +1,40 @@
+<%- include('partials/header') %>
+
+<section class="intro">
+  <h1><%= title %></h1>
+  <p>Nhập mã đơn hàng (ví dụ KT00012) và số điện thoại đã dùng khi đặt.</p>
+</section>
+
+<section class="account">
+  <form class="form" action="/tra-cuu-don" method="post">
+    <% if (notFound) { %><p class="option-error" role="alert">Không tìm thấy đơn hàng với mã và số điện thoại này.</p><% } %>
+    <label class="field">
+      <span>Mã đơn hàng</span>
+      <input type="text" name="code" value="<%= values.code %>" maxlength="12" autocomplete="off" required>
+    </label>
+    <label class="field">
+      <span>Số điện thoại đặt hàng</span>
+      <input type="tel" name="phone" value="<%= values.phone %>" maxlength="15" autocomplete="tel" required>
+    </label>
+    <button class="btn btn-dark" type="submit">Tra cứu</button>
+  </form>
+
+  <% if (order) { %>
+    <h2>Đơn <%= orderCode(order.id) %></h2>
+    <ul class="account-orders">
+      <li>
+        <p><b><%= statuses[order.status] %></b> · <%= payments[order.payment_status] %> · <%= formatPrice(order.total) %></p>
+        <ul>
+          <% for (const item of order.items) { %>
+            <li><%= item.name %> <span class="muted"><%= [item.color, item.size && `size ${item.size}`, `x${item.qty}`].filter(Boolean).join(' · ') %></span></li>
+          <% } %>
+        </ul>
+        <p class="muted">Giao tới: <%= order.address %></p>
+      </li>
+    </ul>
+  <% } %>
+
+  <p class="account-alt">Cần hỗ trợ về đơn hàng? <a href="/lien-he">Liên hệ shop</a></p>
+</section>
+
+<%- include('partials/footer') %>

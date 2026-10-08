@@ -43,6 +43,9 @@
         <ul>
           <li><a href="/cua-hang">Hệ thống cửa hàng</a></li>
           <li><a href="/lien-he">Liên hệ</a></li>
+          <li><a href="/tra-cuu-don">Tra cứu đơn hàng</a></li>
+          <% if (site.zalo) { %><li><a href="<%= site.zalo %>" target="_blank" rel="noopener">Chat Zalo</a></li><% } %>
+          <% if (site.facebook) { %><li><a href="<%= site.facebook %>" target="_blank" rel="noopener">Chat Messenger</a></li><% } %>
         </ul>
       </div>
       <div>
@@ -87,6 +90,18 @@
       </div>
     </form>
   </dialog>
+
+  <%# Nút chat nổi ở góc màn hình: bấm là mở Zalo / Messenger để nhắn cho shop. Chỉ hiện khi đã khai báo link ở trang quản trị. %>
+  <% if (site.zalo || site.facebook) { %>
+    <div class="chat-float">
+      <% if (site.zalo) { %><a class="chat-zalo" href="<%= site.zalo %>" target="_blank" rel="noopener" aria-label="Nhắn tin cho shop qua Zalo">Zalo</a><% } %>
+      <% if (site.facebook) { %>
+        <a class="chat-messenger" href="<%= site.facebook %>" target="_blank" rel="noopener" aria-label="Nhắn tin cho shop qua Messenger">
+          <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2C6.4 2 2 6.1 2 11.4c0 3 1.500 5.600 3.800 7.300V22l3.400-1.900c.9.2 1.800.4 2.800.4 5.600 0 10-4.100 10-9.400S17.600 2 12 2zm1 12.600-2.600-2.700-5 2.700 5.500-5.800 2.600 2.700 4.900-2.700-5.400 5.800z"/></svg>
+        </a>
+      <% } %>
+    </div>
+  <% } %>
 
   <script src="/js/main.js"></script>
 </body>

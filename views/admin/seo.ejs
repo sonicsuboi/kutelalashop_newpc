@@ -1,0 +1,117 @@
+<%- include('head') %>
+<%
+  const ranges = { 7: '7 ngày', 30: '30 ngày', 90: '90 ngày' };
+  const share = all.visitors ? Math.round(fromSearch.visitors / all.visitors * 100) : 0;
+  const len = checks.description.length;
+%>
+
+<h1><%= title %></h1>
+
+<div class="tabs">
+  <% for (const [n, label] of Object.entries(ranges)) { %>
+    <a href="/admin/seo?ngay=<%= n %>" class="<%= days === Number(n) ? 'active' : '' %>"><%= label %></a>
+  <% } %>
+</div>
+
+<div class="stats">
+  <div class="stat"><span>Khách từ tìm kiếm</span><b><%= fromSearch.visitors %> người</b><small><%= share %>% tổng số người truy cập</small></div>
+  <div class="stat"><span>Lượt xem từ tìm kiếm</span><b><%= fromSearch.views %></b></div>
+  <div class="stat"><span>Đơn từ tìm kiếm</span><b><%= orders.n %></b><small><%= formatPrice(orders.revenue) %></small></div>
+</div>
+
+<section class="card">
+  <h2>Khách tới từ Google và công cụ tìm kiếm khác, theo ngày</h2>
+  <div class="chart" style="grid-template-columns: repeat(<%= chart.length %>, 1fr)" role="img" aria-label="Biểu đồ khách từ tìm kiếm theo ngày">
+    <% chart.forEach((d, i) => { %>
+      <div class="chart-col" tabindex="0">
+        <div class="chart-track"><div class="chart-bar" style="height: <%= d.visitors ? Math.max(3, Math.round(d.visitors / chartMax * 100)) : 0 %>%"></div></div>
+        <span class="chart-tip"><%= d.label %>: <%= d.visitors %> người</span>
+        <% if (chart.length <= 10 || i % 5 === 0) { %><span class="chart-label"><%= d.label %></span><% } %>
+      </div>
+    <% }) %>
+  </div>
+  <table class="sr-only">
+    <caption>Khách từ tìm kiếm theo ngày</caption>
+    <tr><th>Ngày</th><th>Người</th></tr>
+    <% for (const d of chart) { %><tr><td><%= d.label %></td><td><%= d.visitors %></td></tr><% } %>
+  </table>
+</section>
+
+<div class="cols">
+  <section>
+    <h2>Khách bấm từ kết quả tìm kiếm vào trang nào</h2>
+    <% if (landings.length) { %>
+      <table class="table">
+        <thead><tr><th>Trang</th><th class="num">Lượt vào</th></tr></thead>
+        <tbody>
+          <% for (const l of landings) { %>
+            <tr><td><% if (l.name) { %><b><%= l.name %></b><br><% } %><span class="muted"><%= l.path %></span></td><td class="num"><%= l.visits %></td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    <% } else { %>
+      <p class="muted">Chưa có khách nào tới từ công cụ tìm kiếm trong khoảng này. Web mới thường mất vài tuần mới bắt đầu có.</p>
+    <% } %>
+
+    <h2 style="margin-top: 28px">Khách gõ gì vào ô tìm kiếm của web</h2>
+    <% if (searches.length) { %>
+      <table class="table">
+        <thead><tr><th>Từ khoá</th><th class="num">Số lần</th><th class="num">Số người</th><th class="num">Tìm được</th></tr></thead>
+        <tbody>
+          <% for (const s of searches) { %>
+            <tr>
+              <td><b><%= s.query %></b></td>
+              <td class="num"><%= s.times %></td>
+              <td class="num"><%= s.people %></td>
+              <td class="num <%= s.results ? '' : 'warn' %>"><%= s.results ? `${s.results} mẫu` : 'Không có' %></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+      <p class="muted small">Từ khoá ghi “Không có” là thứ khách cần mà shop chưa có hoặc đặt tên khác: nên nhập hàng, hoặc thêm từ đó vào tên sản phẩm.</p>
+    <% } else { %>
+      <p class="muted">Chưa có ai dùng ô tìm kiếm trong khoảng này.</p>
+    <% } %>
+  </section>
+
+  <aside>
+    <section class="card">
+      <h2>Theo công cụ tìm kiếm</h2>
+      <% if (engines.length) { %>
+        <ul class="low">
+          <% for (const e of engines) { %><li><span><%= admin.sourceLabel(e.source) %></span><b><%= e.visitors %> người</b></li><% } %>
+        </ul>
+      <% } else { %><p class="muted">Chưa có.</p><% } %>
+    </section>
+
+    <section class="card">
+      <h2>Kiểm tra SEO</h2>
+      <ul class="low">
+        <li><span>Sơ đồ trang cho Google</span><a href="/sitemap.xml" target="_blank" rel="noopener">sitemap.xml</a></li>
+        <li><span>Câu giới thiệu web</span><b class="<%= len >= 80 && len <= 170 ? '' : 'warn' %>"><%= len %> ký tự</b></li>
+        <li><span>Google Search Console</span><b class="<%= checks.verified ? '' : 'warn' %>"><%= checks.verified ? 'Đã có mã' : 'Chưa xác minh' %></b></li>
+        <li><span>Tên miền riêng</span><b class="<%= checks.customDomain ? '' : 'warn' %>"><%= checks.customDomain ? 'Có' : 'Chưa có' %></b></li>
+        <li><span>Sản phẩm thiếu mô tả</span><b class="<%= checks.noDescription.length ? 'warn' : '' %>"><%= checks.noDescription.length %></b></li>
+        <li><span>Sản phẩm thiếu ảnh</span><b class="<%= checks.noPhoto.length ? 'warn' : '' %>"><%= checks.noPhoto.length %></b></li>
+      </ul>
+      <% for (const p of [...checks.noDescription, ...checks.noPhoto].slice(0, 6)) { %>
+        <p class="small"><a href="/admin/san-pham/<%= p.id %>"><%= p.code || '#' + p.id %> · <%= p.name %></a></p>
+      <% } %>
+    </section>
+  </aside>
+</div>
+
+<section class="card wide">
+  <h2>Xem khách gõ từ khoá gì trên Google</h2>
+  <p>Google không gửi từ khoá cho trang web, nên bảng ở trên chỉ biết khách <b>tới từ Google</b> và <b>vào trang nào</b>. Muốn biết chính xác khách gõ gì, web hiện ở vị trí thứ mấy và được bấm bao nhiêu lần, dùng công cụ miễn phí <b>Google Search Console</b>:</p>
+  <ol>
+    <li>Mở <a href="https://search.google.com/search-console" target="_blank" rel="noopener">search.google.com/search-console</a>, đăng nhập tài khoản Google.</li>
+    <li>Chọn <b>Thêm trang web</b> &gt; kiểu <b>Tiền tố URL</b>, nhập <code><%= base %></code>.</li>
+    <li>Ở bước xác minh, chọn <b>Thẻ HTML</b> và chép thẻ meta Google đưa cho. Nếu Google đưa một <b>tệp HTML</b> (tên dạng <code>google….html</code>) thì chỉ cần chép tên tệp, không phải tải tệp lên.</li>
+    <li>Dán thẻ hoặc tên tệp đó vào ô <b>Mã xác minh Google Search Console</b> ở trang <a href="/admin/thong-tin">Thông tin website</a>, bấm lưu, rồi quay lại Google bấm <b>Xác minh</b>.</li>
+    <li>Trong Search Console, vào <b>Sơ đồ trang web</b> và gửi <code><%= base %>/sitemap.xml</code>.</li>
+  </ol>
+  <p class="muted">Sau vài ngày, mục <b>Hiệu suất</b> trong Search Console sẽ hiện danh sách từ khoá, số lần hiển thị, số lần bấm và vị trí trung bình.</p>
+</section>
+
+<%- include('foot') %>

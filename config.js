@@ -8,11 +8,19 @@ try {
   // chưa có file .env: chạy với mặc định, trang quản trị và thanh toán thẻ sẽ tắt
 }
 
-// Thông tin shop dùng chung cho mọi trang
+// Thông tin shop dùng chung cho mọi trang. Đây là giá trị mặc định; sửa ở trang quản trị
+// (/admin/thong-tin) thì giá trị mới lưu trong database và được dùng thay.
 const SITE = {
   name: 'KUTELALA',
   email: 'lienhe@kutelala.example',
   phone: '0900 000 000',
+  // Câu giới thiệu hiện dưới tên web trên Google và khi chia sẻ link
+  description: 'KUTELALA – giày dép, túi xách và kính mát nữ phong cách tối giản.',
+  // Link chat: https://zalo.me/<số điện thoại> và https://m.me/<tên trang Facebook>. Để trống thì không hiện nút.
+  zalo: '',
+  facebook: '',
+  // Mã xác minh Google Search Console (phần content của thẻ meta google-site-verification)
+  google_verify: '',
 };
 
 module.exports = { SITE };

@@ -6,13 +6,11 @@
 </div>
 
 <form class="inline" action="/admin/san-pham" method="get">
-  <input type="search" name="q" value="<%= q %>" placeholder="Gõ tên hoặc mã để tìm" aria-label="Tìm sản phẩm" list="product-suggest" autocomplete="off" data-filter>
-  <datalist id="product-suggest">
-    <% for (const p of products) { %>
-      <option value="<%= p.name %>"><%= p.code || '' %></option>
-      <% if (p.code) { %><option value="<%= p.code %>"><%= p.name %></option><% } %>
-    <% } %>
-  </datalist>
+  <div class="suggest-box">
+    <input type="search" name="q" value="<%= q %>" placeholder="Gõ tên hoặc mã để tìm" aria-label="Tìm sản phẩm" autocomplete="off"
+           role="combobox" aria-expanded="false" aria-controls="product-suggest" aria-autocomplete="list" data-filter>
+    <ul class="suggest" id="product-suggest" role="listbox" hidden></ul>
+  </div>
   <button class="btn btn-light" type="submit">Tìm</button>
 </form>
 
@@ -23,7 +21,7 @@
     </thead>
     <tbody>
       <% for (const p of products) { %>
-        <tr data-row="<%= `${p.name} ${p.code || ''}` %>">
+        <tr data-row="<%= `${p.name} ${p.code || ''}` %>" data-name="<%= p.name %>" data-code="<%= p.code || '' %>" data-href="/admin/san-pham/<%= p.id %>">
           <td><%= p.code || '—' %></td>
           <td><a href="/admin/san-pham/<%= p.id %>"><b><%= p.name %></b></a></td>
           <td><%= admin.categories[p.category] || p.category %></td>
@@ -42,21 +40,69 @@
 <p class="muted" data-no-match <%= products.length ? 'hidden' : '' %>>Không tìm thấy sản phẩm nào.</p>
 
 <script>
-  // Gõ tới đâu lọc danh sách tới đó, không phân biệt dấu và chữ hoa
+  // Gõ tới đâu lọc tới đó, không phân biệt dấu và chữ hoa: sản phẩm khớp là sản phẩm có đủ mọi từ đã gõ
+  // (trong tên hoặc mã). Bảng bên dưới và danh sách gợi ý xổ xuống dùng chung một cách lọc.
   const fold = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
   const input = document.querySelector('[data-filter]');
-  const rows = [...document.querySelectorAll('[data-row]')];
+  const list = document.getElementById('product-suggest');
+  const rows = [...document.querySelectorAll('[data-row]')].map((el) => ({ el, text: fold(el.dataset.row) }));
   const noMatch = document.querySelector('[data-no-match]');
-  const apply = () => {
-    const q = fold(input.value.trim());
-    let shown = 0;
-    for (const row of rows) {
-      row.hidden = !fold(row.dataset.row).includes(q);
-      if (!row.hidden) shown++;
-    }
-    noMatch.hidden = shown > 0;
+  const MAX_SUGGEST = 8;
+  let active = -1;
+
+  const close = () => {
+    list.hidden = true;
+    input.setAttribute('aria-expanded', 'false');
+    active = -1;
   };
-  input.addEventListener('input', apply);
+  const mark = () => {
+    [...list.children].forEach((li, i) => li.setAttribute('aria-selected', String(i === active)));
+    if (list.children[active]) list.children[active].scrollIntoView({ block: 'nearest' });
+  };
+
+  function apply(showList) {
+    const words = fold(input.value).split(/\s+/).filter(Boolean);
+    const matches = rows.filter((row) => words.every((w) => row.text.includes(w)));
+    for (const row of rows) row.el.hidden = !matches.includes(row);
+    noMatch.hidden = matches.length > 0;
+
+    list.replaceChildren(...matches.slice(0, MAX_SUGGEST).map(({ el }) => {
+      const li = document.createElement('li');
+      li.setAttribute('role', 'option');
+      li.dataset.href = el.dataset.href;
+      const name = document.createElement('b');
+      name.textContent = el.dataset.name;
+      const code = document.createElement('span');
+      code.textContent = el.dataset.code;
+      li.append(name, code);
+      return li;
+    }));
+    active = -1;
+    list.hidden = !(showList && words.length && matches.length);
+    input.setAttribute('aria-expanded', String(!list.hidden));
+  }
+
+  input.addEventListener('input', () => apply(true));
+  input.addEventListener('focus', () => apply(true));
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') return close();
+    if (list.hidden || !list.children.length) return;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const n = list.children.length;
+      active = (active + (e.key === 'ArrowDown' ? 1 : -1) + n) % n;
+      mark();
+    } else if (e.key === 'Enter' && active >= 0) {
+      e.preventDefault();
+      location.href = list.children[active].dataset.href;
+    }
+  });
+  // mousedown thay vì click: phải chạy trước khi ô tìm mất focus và danh sách đóng lại
+  list.addEventListener('mousedown', (e) => {
+    const li = e.target.closest('li');
+    if (li) { e.preventDefault(); location.href = li.dataset.href; }
+  });
+  input.addEventListener('blur', close);
 </script>
 
 <%- include('foot') %>

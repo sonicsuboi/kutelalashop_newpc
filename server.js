@@ -9,7 +9,9 @@ const supportPages = require('./content');
 const { fold } = require('./text');
 const { syncAllMedia, syncProductMedia } = require('./media');
 const { CATEGORIES, sizesOf, colorsOf, stockOf, stockMap } = require('./catalog');
-const { orderCode, orderIdFromCode, OutOfStockError, createOrder, cancelOrder, markPaid } = require('./orders');
+const {
+  ORDER_STATUS, PAYMENT_STATUS, orderCode, orderIdFromCode, OutOfStockError, createOrder, cancelOrder, markPaid,
+} = require('./orders');
 const vnpay = require('./vnpay');
 const admin = require('./admin');
 const customers = require('./customers');
@@ -42,6 +44,11 @@ function findImage(name, fallback = null) {
     fs.existsSync(path.join(__dirname, 'public', 'images', `${name}.${e}`)));
   return ext ? `/images/${name}.${ext}` : fallback;
 }
+
+// Địa chỉ gốc của web, dùng cho link tuyệt đối (canonical, sitemap, quay về sau thanh toán)
+const baseUrl = (req) => process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+// Cắt gọn một đoạn chữ cho thẻ mô tả, không cắt giữa từ
+const excerpt = (s, max = 160) => (s.length <= max ? s : s.slice(0, max).replace(/\s+\S*$/, '') + '…');
 
 const queryText = (value) => (typeof value === 'string' ? value.trim().slice(0, 80) : '');
 const formText = (value) => (typeof value === 'string' ? value.trim() : '');
@@ -160,7 +167,59 @@ app.use(ah(async (req, res, next) => {
   res.locals.formatPrice = (vnd) =>
     String(vnd).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' đ';
   res.locals.customer = await customers.currentCustomer(req);
+  // Thẻ SEO ở đầu trang (views/partials/header.ejs). Từng route ghi đè phần cần khác đi.
+  const base = baseUrl(req);
+  res.locals.seo = {
+    base,
+    title: '',
+    description: res.locals.site.description,
+    canonical: base + req.path,
+    image: base + findImage('hero', '/images/hero.svg'),
+    noindex: false,
+    jsonLd: null,
+  };
   next();
+}));
+
+// Các trang riêng của từng khách: không cho Google đưa vào kết quả tìm kiếm
+const PRIVATE_PATHS = ['/gio-hang', '/tai-khoan', '/yeu-thich', '/tra-cuu-don', '/thanh-toan'];
+app.use(PRIVATE_PATHS, (req, res, next) => {
+  res.locals.seo.noindex = true;
+  next();
+});
+
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain').send([
+    'User-agent: *',
+    'Disallow: /admin',
+    ...PRIVATE_PATHS.map((p) => `Disallow: ${p}`),
+    '',
+    `Sitemap: ${baseUrl(req)}/sitemap.xml`,
+    '',
+  ].join('\n'));
+});
+
+// Xác minh Google Search Console bằng cách "Tệp HTML": Google đòi web trả về đúng file google<mã>.html.
+// Tên file khai báo ở trang quản trị (/admin/thong-tin), không cần tải file lên.
+app.get(/^\/(google[0-9a-f]+\.html)$/, (req, res, next) => {
+  if (res.locals.site.google_verify !== req.params[0]) return next();
+  res.type('text/html').send(`google-site-verification: ${req.params[0]}`);
+});
+
+// Danh sách mọi trang công khai để Google tìm thấy hết sản phẩm
+app.get('/sitemap.xml', ah(async (req, res) => {
+  const base = baseUrl(req);
+  const paths = [
+    '/', '/san-pham',
+    ...Object.keys(res.locals.categories).map((key) => `/san-pham?loai=${key}`),
+    ...(await db.query('SELECT slug FROM products ORDER BY id')).map((p) => `/san-pham/${p.slug}`),
+    '/gioi-thieu', '/cua-hang', '/lien-he',
+    ...Object.keys(supportPages).map((slug) => `/ho-tro/${slug}`),
+  ];
+  res.type('application/xml').send(
+    '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    + paths.map((p) => `  <url><loc>${base}${p.replace(/&/g, '&amp;')}</loc></url>`).join('\n')
+    + '\n</urlset>\n');
 }));
 
 // Trang quản trị: đơn hàng và kho sản phẩm
@@ -175,6 +234,12 @@ app.use('/tai-khoan', customers.router);
 // Trang chủ
 app.get('/', ah(async (req, res) => {
   const featured = await db.query(`${PRODUCTS} ORDER BY created_at DESC, p.id ASC LIMIT 5`);
+  const { site, seo } = res.locals;
+  seo.title = `${site.name} | Giày dép, túi xách, kính mát nữ`;
+  seo.jsonLd = {
+    '@context': 'https://schema.org', '@type': 'Store', name: site.name, url: seo.base + '/',
+    description: site.description, telephone: site.phone, email: site.email, image: seo.image,
+  };
   res.render('home', {
     title: 'Trang chủ',
     featured,
@@ -198,6 +263,22 @@ app.get('/san-pham', ah(async (req, res) => {
     ? await db.query(`${PRODUCTS} WHERE category = ? ORDER BY ${SORTS[sort].sql}`, [category])
     : await db.query(`${PRODUCTS} ORDER BY ${SORTS[sort].sql}`);
   if (q) products = products.filter((p) => fold(p.name).includes(fold(q)));
+
+  // Ghi lại từ khoá khách tìm để shop biết khách cần gì (xem ở trang quản trị SEO)
+  if (q && !req.isBot) {
+    db.run('INSERT INTO searches (query, results, visitor) VALUES (?, ?, ?)', [q.toLowerCase(), products.length, req.visitor])
+      .catch((err) => console.error('Không ghi được từ khoá tìm kiếm:', err.message || err.code));
+  }
+
+  const { seo, shopName } = res.locals;
+  if (q) seo.noindex = true; // trang kết quả tìm kiếm không đưa lên Google
+  if (category) {
+    seo.canonical = `${seo.base}/san-pham?loai=${category}`;
+    seo.title = `${CATEGORIES[category]} nữ | ${shopName}`;
+    seo.description = `${CATEGORIES[category]} nữ tại ${shopName}: ${products.length} mẫu đang bán, form chuẩn, fullbox.`;
+  } else {
+    seo.title = `Sản phẩm mới | ${shopName}`;
+  }
 
   // Tạo link giữ nguyên các bộ lọc đang chọn, chỉ đổi phần truyền vào
   const link = (change) => {
@@ -267,10 +348,36 @@ app.get('/san-pham/:slug', ah(async (req, res, next) => {
   const colors = await colorsOf(db, product.id);
   const stock = await stockMap(db, product, colors);
   res.locals.viewedProduct = product.id;
+  const feedback = await productFeedback(product, res.locals.customer, req.visitor);
+  const stockTotal = Object.values(stock).reduce((sum, qty) => sum + qty, 0);
+
+  // Thẻ SEO và dữ liệu có cấu trúc: Google dùng để hiện giá, tình trạng hàng và số sao trong kết quả tìm kiếm
+  const { seo, shopName } = res.locals;
+  const images = media.filter((m) => m.kind === 'image').map((m) => m.url);
+  seo.title = `${product.name}${product.code ? ` (${product.code})` : ''} | ${shopName}`;
+  seo.description = excerpt(`${product.description || product.name} Giá ${res.locals.formatPrice(product.price)}.`);
+  if (images.length) seo.image = images[0];
+  seo.jsonLd = {
+    '@context': 'https://schema.org', '@type': 'Product',
+    name: product.name,
+    description: product.description || product.name,
+    ...(product.code ? { sku: product.code } : {}),
+    ...(images.length ? { image: images.slice(0, 6) } : {}),
+    category: CATEGORIES[product.category],
+    offers: {
+      '@type': 'Offer', url: seo.canonical, priceCurrency: 'VND', price: product.price,
+      availability: `https://schema.org/${stockTotal ? 'InStock' : 'OutOfStock'}`,
+      itemCondition: 'https://schema.org/NewCondition',
+    },
+    ...(feedback.reviews.length ? {
+      aggregateRating: { '@type': 'AggregateRating', ratingValue: Number(feedback.rating.toFixed(1)), reviewCount: feedback.reviews.length },
+    } : {}),
+  };
+
   res.render('product', {
     title: product.name,
     product,
-    ...(await productFeedback(product, res.locals.customer, req.visitor)),
+    ...feedback,
     reviewError: req.query.loi === 'danh-gia',
     related,
     media,
@@ -279,7 +386,7 @@ app.get('/san-pham/:slug', ah(async (req, res, next) => {
     sizes: sizesOf(product),
     // số lượng còn theo từng 'màu.size'
     stock,
-    stockTotal: Object.values(stock).reduce((sum, qty) => sum + qty, 0),
+    stockTotal,
     needSize: req.query.loi === 'size',
     outOfStock: req.query.loi === 'het',
   });
@@ -359,7 +466,8 @@ app.get('/cua-hang', ah(async (req, res) => {
 
 // Liên hệ
 app.get('/lien-he', ah(async (req, res) => {
-  const values = { name: '', email: '', message: '' };
+  const { customer } = res.locals;
+  const values = { name: customer ? customer.name : '', email: '', phone: customer ? customer.phone : '', message: '' };
   if (typeof req.query.sp === 'string') {
     const product = await db.one('SELECT name FROM products WHERE slug = ?', [req.query.sp]);
     if (product) values.message = `Tôi quan tâm đến sản phẩm: ${product.name}.`;
@@ -371,14 +479,18 @@ app.post('/lien-he', ah(async (req, res) => {
   const values = {
     name: formText(req.body.name),
     email: formText(req.body.email),
+    phone: formText(req.body.phone),
     message: formText(req.body.message),
   };
 
+  // Khách để lại email hoặc số điện thoại, ít nhất một trong hai, để shop liên hệ lại
   const errors = {};
   if (!values.name || values.name.length > 100) errors.name = 'Vui lòng nhập họ tên.';
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email) || values.email.length > 200) {
+  if (values.email && (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email) || values.email.length > 200)) {
     errors.email = 'Email chưa đúng định dạng.';
   }
+  if (values.phone && !/^[0-9+][0-9\s.-]{7,14}$/.test(values.phone)) errors.phone = 'Số điện thoại chưa đúng.';
+  if (!values.email && !values.phone) errors.phone = 'Vui lòng để lại số điện thoại hoặc email để shop liên hệ lại.';
   if (!values.message) errors.message = 'Vui lòng nhập nội dung.';
   else if (values.message.length > 2000) errors.message = 'Nội dung tối đa 2000 ký tự.';
 
@@ -386,7 +498,8 @@ app.post('/lien-he', ah(async (req, res) => {
     return res.status(400).render('contact', { title: 'Liên hệ', values, errors, sent: false });
   }
 
-  await db.run('INSERT INTO messages (name, email, message) VALUES (?, ?, ?)', [values.name, values.email, values.message]);
+  await db.run('INSERT INTO messages (name, email, phone, message) VALUES (?, ?, ?, ?)',
+    [values.name, values.email, values.phone || null, values.message]);
   res.redirect('/lien-he?sent=1');
 }));
 
@@ -475,7 +588,7 @@ app.post('/gio-hang/dat-hang', ah(async (req, res) => {
   const code = orderCode(order.id);
   if (values.payment === 'vnpay') {
     // Giỏ hàng được giữ lại cho tới khi thanh toán xong, để khách thử lại được nếu thẻ lỗi
-    const base = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+    const base = baseUrl(req);
     return res.redirect(vnpay.paymentUrl({
       orderId: order.id,
       amount: order.total,
@@ -493,6 +606,24 @@ app.get('/gio-hang/cam-on', ah(async (req, res) => {
   const order = await db.one('SELECT payment_status FROM orders WHERE id = ?', [orderIdFromCode(req.query.ma)]);
   if (!order) return res.redirect('/gio-hang');
   res.render('thanks', { title: 'Đã nhận đơn hàng', code: req.query.ma, paid: order.payment_status === 'paid' });
+}));
+
+// Tra cứu đơn hàng cho khách không có tài khoản: cần đúng cả mã đơn và số điện thoại đã đặt
+app.get('/tra-cuu-don', (req, res) => {
+  res.render('order-lookup', { title: 'Tra cứu đơn hàng', values: { code: orderIdFromCode(req.query.ma) ? req.query.ma : '', phone: '' }, order: null, notFound: false });
+});
+
+app.post('/tra-cuu-don', ah(async (req, res) => {
+  const digits = (s) => String(s || '').replace(/\D/g, '').replace(/^84/, '0');
+  const values = { code: formText(req.body.code).toUpperCase().replace(/\s/g, ''), phone: formText(req.body.phone) };
+  let order = await db.one('SELECT * FROM orders WHERE id = ?', [orderIdFromCode(values.code)]);
+  if (order && (!digits(values.phone) || digits(order.phone) !== digits(values.phone))) order = null;
+  if (order) {
+    order.items = await db.query('SELECT name, color, size, qty, price FROM order_items WHERE order_id = ? ORDER BY id', [order.id]);
+  }
+  res.status(order ? 200 : 404).render('order-lookup', {
+    title: 'Tra cứu đơn hàng', values, order, notFound: !order, statuses: ORDER_STATUS, payments: PAYMENT_STATUS, orderCode,
+  });
 }));
 
 // VNPay đưa khách quay về đây sau khi thanh toán
@@ -519,6 +650,7 @@ app.get('/ho-tro/:slug', (req, res, next) => {
 });
 
 app.use((req, res) => {
+  res.locals.seo.noindex = true;
   res.status(404).render('404', { title: 'Không tìm thấy trang' });
 });
 

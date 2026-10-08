@@ -24,7 +24,35 @@
       <% if (errors.phone) { %><em><%= errors.phone %></em><% } %>
     </label>
   </div>
-  <button class="btn" type="submit">Lưu liên hệ</button>
+  <div class="row">
+    <label class="field">
+      <span>Zalo của shop</span>
+      <input type="text" name="zalo" value="<%= values.zalo || '' %>" maxlength="120" placeholder="Số điện thoại Zalo, vd: 0912345678">
+      <small>Điền vào thì web hiện nút chat Zalo ở góc màn hình: khách bấm là mở Zalo nhắn cho số này. Để trống thì không hiện.</small>
+      <% if (errors.zalo) { %><em><%= errors.zalo %></em><% } %>
+    </label>
+    <label class="field">
+      <span>Messenger của shop</span>
+      <input type="text" name="facebook" value="<%= values.facebook || '' %>" maxlength="200" placeholder="Tên trang Facebook, vd: kutelala.shop">
+      <small>Tên trang trong link facebook.com/<b>tên-trang</b>. Để trống thì không hiện nút Messenger.</small>
+      <% if (errors.facebook) { %><em><%= errors.facebook %></em><% } %>
+    </label>
+  </div>
+
+  <h2>Hiển thị trên Google</h2>
+  <label class="field">
+    <span>Câu giới thiệu web</span>
+    <textarea name="description" rows="2" maxlength="200" required><%= values.description || '' %></textarea>
+    <small>Hiện dưới tên web trong kết quả tìm kiếm và khi chia sẻ link. Nên dài 120–160 ký tự, có những từ khách hay tìm (giày nữ, sandal, túi xách…).</small>
+    <% if (errors.description) { %><em><%= errors.description %></em><% } %>
+  </label>
+  <label class="field">
+    <span>Mã xác minh Google Search Console</span>
+    <input type="text" name="google_verify" value="<%= values.google_verify || '' %>" maxlength="300" placeholder="Dán thẻ meta, hoặc tên file google….html Google đưa cho">
+    <small>Cần để xem khách gõ từ khoá gì trên Google. Hướng dẫn ở trang <a href="/admin/seo">SEO</a>.</small>
+    <% if (errors.google_verify) { %><em><%= errors.google_verify %></em><% } %>
+  </label>
+  <button class="btn" type="submit">Lưu thông tin</button>
 </form>
 
 <section class="card wide" id="cua-hang">

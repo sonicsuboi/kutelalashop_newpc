@@ -330,13 +330,17 @@ main {
 .category-list a:hover .art svg { transform: rotate(-8deg) scale(1.08); }
 
 /* Trang chủ: câu chuyện */
+/* Nằm gọn trong cùng khung với lưới sản phẩm (.grid), không tràn hết chiều ngang màn hình */
 .story {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  margin-top: 96px;
+  gap: 4px;
+  max-width: var(--page);
+  margin: 96px auto 0;
+  padding: 0 4px;
 }
 .story-text {
-  padding: 88px var(--gutter);
+  padding: 88px 72px;
   color: #fff;
   background: #0a0a0a center / cover no-repeat;
 }
@@ -1020,7 +1024,7 @@ main {
   .card { padding-bottom: 36px; }
   .section-head { padding-top: 56px; }
   .section-head h2 { font-size: 17px; }
-  .story { margin-top: 56px; }
+  .story { margin: 56px auto 0; }
   .assist { grid-template-columns: 1fr; padding: 56px var(--gutter); }
   .cart-lines li { grid-template-columns: 84px 1fr; gap: 16px; }
   .cart-subtotal { grid-column: 2; }
@@ -1136,4 +1140,26 @@ main {
 
 @media (max-width: 1000px) {
   .reviews-body { grid-template-columns: 1fr; gap: 40px; }
+}
+/* Nút chat nổi (Zalo, Messenger) ở góc dưới bên phải */
+.chat-float { position: fixed; z-index: 30; right: 20px; bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
+.chat-float a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  border-radius: 50%;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .25);
+  transition: transform .2s ease;
+}
+.chat-float a:hover { transform: scale(1.08); }
+.chat-zalo { background: #0068ff; }
+.chat-messenger { background: #0a7cff; }
+@media (max-width: 560px) {
+  .chat-float { right: 12px; bottom: 12px; }
+  .chat-float a { width: 46px; height: 46px; }
 }

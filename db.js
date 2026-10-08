@@ -213,6 +213,20 @@ async function migrate() {
       UNIQUE (product_id, customer_id)
     );
 
+    -- Tin nhắn ở trang Liên hệ: khách để lại email hoặc số điện thoại; done = shop đã trả lời
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS phone TEXT;
+    ALTER TABLE messages ADD COLUMN IF NOT EXISTS done BOOLEAN NOT NULL DEFAULT false;
+
+    -- Từ khoá khách gõ vào ô tìm kiếm của web, kèm số sản phẩm tìm được
+    CREATE TABLE IF NOT EXISTS searches (
+      id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      query      TEXT NOT NULL,
+      results    INTEGER NOT NULL,
+      visitor    TEXT,
+      created_at TIMESTAMP NOT NULL DEFAULT (now() AT TIME ZONE 'utc')
+    );
+    CREATE INDEX IF NOT EXISTS searches_created ON searches(created_at);
+
     CREATE UNIQUE INDEX IF NOT EXISTS products_code ON products(code) WHERE code IS NOT NULL;
   `);
 

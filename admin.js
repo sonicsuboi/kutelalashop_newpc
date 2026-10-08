@@ -11,7 +11,7 @@ const { ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, orderCode, cancelOrder, ma
 const { syncProductMedia, prefixOf } = require('./media');
 const storage = require('./storage');
 const { saveSite } = require('./site');
-const { sourceLabel } = require('./tracking');
+const { sourceLabel, SEARCH_ENGINES } = require('./tracking');
 const { hashPassword } = require('./customers');
 const ah = require('./async-handler');
 
@@ -124,6 +124,7 @@ router.get('/', ah(async (req, res) => {
       newOrders: await one("SELECT COUNT(*)::int AS n FROM orders WHERE status = 'new'"),
       shipping: await one("SELECT COUNT(*)::int AS n FROM orders WHERE status IN ('confirmed', 'shipping')"),
       refund: await one("SELECT COUNT(*)::int AS n FROM orders WHERE status = 'cancelled' AND payment_status = 'paid'"),
+      messages: await one('SELECT COUNT(*)::int AS n FROM messages WHERE NOT done'),
       soldOut: products.filter((p) => !p.stock_total).length,
       noPhoto: products.filter((p) => !p.media_count).length,
     },
@@ -196,7 +197,9 @@ router.post('/don-hang/:id(\\d+)/da-thanh-toan', ah(async (req, res, next) => {
 router.get('/san-pham', ah(async (req, res) => {
   const q = text(req.query.q).slice(0, 80);
   let products = await db.query(`${PRODUCT_ROWS} ORDER BY p.id DESC`);
-  if (q) products = products.filter((p) => fold(`${p.name} ${p.code || ''}`).includes(fold(q)));
+  // khớp khi tên hoặc mã có đủ mọi từ đã gõ, giống cách lọc ngay trên trang
+  const words = fold(q).split(/\s+/).filter(Boolean);
+  if (words.length) products = products.filter((p) => words.every((w) => fold(`${p.name} ${p.code || ''}`).includes(w)));
   res.render('admin/products', { title: 'Kho sản phẩm', products, q });
 }));
 
@@ -418,6 +421,77 @@ router.get('/truy-cap', ah(async (req, res) => {
   });
 }));
 
+// SEO: khách tới từ công cụ tìm kiếm, vào trang nào đầu tiên, và gõ gì vào ô tìm kiếm của web.
+// Từ khoá khách gõ trên Google thì Google không gửi cho web; phải xem ở Google Search Console.
+router.get('/seo', ah(async (req, res) => {
+  const days = [7, 30, 90].includes(Number(req.query.ngay)) ? Number(req.query.ngay) : 30;
+  const VN = "to_char(created_at + interval '7 hours', 'YYYY-MM-DD')";
+  const since = `${VN} >= to_char((now() AT TIME ZONE 'utc') + interval '7 hours' - interval '${days - 1} days', 'YYYY-MM-DD')`;
+  const engines = SEARCH_ENGINES.map((e) => `'${e}'`).join(', ');
+
+  const all = await db.one(`SELECT COUNT(DISTINCT visitor)::int AS visitors FROM visits WHERE ${since}`);
+  const fromSearch = await db.one(`
+    SELECT COUNT(DISTINCT visitor)::int AS visitors, COUNT(*)::int AS views FROM visits WHERE source IN (${engines}) AND ${since}`);
+  const orders = await db.one(`
+    SELECT COUNT(*)::int AS n, COALESCE(SUM(total), 0)::int AS revenue
+    FROM orders WHERE status != 'cancelled' AND source IN (${engines}) AND ${since}`);
+
+  const dayRows = new Map((await db.query(`
+    SELECT ${VN} AS day, COUNT(DISTINCT visitor)::int AS visitors
+    FROM visits WHERE source IN (${engines}) AND ${since} GROUP BY day`)).map((r) => [r.day, r.visitors]));
+  const chart = [];
+  for (let i = Math.min(days, 30) - 1; i >= 0; i--) {
+    const d = new Date(Date.now() + 7 * 3600 * 1000 - i * 86400 * 1000).toISOString().slice(0, 10);
+    chart.push({ label: `${d.slice(8, 10)}/${d.slice(5, 7)}`, visitors: dayRows.get(d) || 0 });
+  }
+
+  const products = await db.query(PRODUCT_ROWS);
+  res.render('admin/seo', {
+    title: 'SEO',
+    days,
+    all,
+    fromSearch,
+    orders,
+    chart,
+    chartMax: Math.max(...chart.map((d) => d.visitors), 1),
+    engines: await db.query(`
+      SELECT source, COUNT(DISTINCT visitor)::int AS visitors, COUNT(*)::int AS views
+      FROM visits WHERE source IN (${engines}) AND ${since} GROUP BY source ORDER BY visitors DESC`),
+    // trang đầu tiên khách mở khi bấm từ kết quả tìm kiếm (dòng có ghi trang dẫn tới)
+    landings: await db.query(`
+      SELECT v.path, p.name, COUNT(*)::int AS visits FROM visits v LEFT JOIN products p ON p.id = v.product_id
+      WHERE v.source IN (${engines}) AND v.referrer IS NOT NULL AND ${since.replaceAll('created_at', 'v.created_at')}
+      GROUP BY v.path, p.name ORDER BY visits DESC LIMIT 15`),
+    searches: await db.query(`
+      SELECT query, COUNT(*)::int AS times, COUNT(DISTINCT visitor)::int AS people, MIN(results)::int AS results
+      FROM searches WHERE ${since} GROUP BY query ORDER BY times DESC, query LIMIT 30`),
+    checks: {
+      description: res.locals.site.description,
+      verified: Boolean(res.locals.site.google_verify),
+      customDomain: !/onrender\.com$/.test(req.hostname) && req.hostname !== 'localhost',
+      noDescription: products.filter((p) => !p.description),
+      noPhoto: products.filter((p) => !p.media_count),
+    },
+    base: process.env.BASE_URL || `${req.protocol}://${req.get('host')}`,
+  });
+}));
+
+// Tin nhắn khách gửi ở trang Liên hệ
+router.get('/tin-nhan', ah(async (req, res) => {
+  const showAll = req.query.xem === 'tat-ca';
+  res.render('admin/messages', {
+    title: 'Tin nhắn',
+    showAll,
+    waiting: (await db.one('SELECT COUNT(*)::int AS n FROM messages WHERE NOT done')).n,
+    messages: await db.query(`SELECT * FROM messages ${showAll ? '' : 'WHERE NOT done'} ORDER BY id DESC LIMIT 200`),
+  });
+}));
+
+router.post('/tin-nhan/:id(\\d+)', ah(async (req, res) => {
+  await db.run('UPDATE messages SET done = ? WHERE id = ?', [req.body.done === '1', Number(req.params.id)]);
+  res.redirect(`/admin/tin-nhan${req.body.xem === 'tat-ca' ? '?xem=tat-ca' : ''}`);
+}));
+
 // Khách hàng đã đăng ký tài khoản
 router.get('/khach-hang', ah(async (req, res) => {
   const q = text(req.query.q).slice(0, 80);
@@ -454,15 +528,36 @@ router.get('/thong-tin', ah(async (req, res) => {
 }));
 
 router.post('/thong-tin', ah(async (req, res) => {
+  // Zalo: nhận số điện thoại hoặc link zalo.me. Messenger: nhận tên trang hoặc link m.me / facebook.com.
+  const zalo = text(req.body.zalo).slice(0, 120);
+  const zaloPhone = zalo.replace(/[\s.-]/g, '').replace(/^\+?84/, '0');
+  const facebook = text(req.body.facebook).slice(0, 200);
+  // Dán cả thẻ <meta ... content="..."> cũng được, chỉ lấy phần mã
+  const verify = text(req.body.google_verify);
   const values = {
     name: text(req.body.name).slice(0, 60),
     email: text(req.body.email).slice(0, 120),
     phone: text(req.body.phone).slice(0, 30),
+    description: text(req.body.description).slice(0, 200),
+    zalo: /^0\d{9,10}$/.test(zaloPhone) ? `https://zalo.me/${zaloPhone}` : zalo,
+    facebook: /^[A-Za-z0-9.]{3,60}$/.test(facebook) ? `https://m.me/${facebook}` : facebook,
+    google_verify: (/content=["']([^"']+)["']/.exec(verify) || [null, verify])[1].slice(0, 120),
   };
   const errors = {};
   if (!values.name) errors.name = 'Vui lòng nhập tên shop.';
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) errors.email = 'Email chưa đúng.';
   if (!/\d/.test(values.phone)) errors.phone = 'Vui lòng nhập số điện thoại.';
+  if (!values.description) errors.description = 'Vui lòng nhập câu giới thiệu.';
+  if (values.zalo && !/^https:\/\/(zalo\.me|chat\.zalo\.me|oa\.zalo\.me)\/[^\s"'<>]+$/.test(values.zalo)) {
+    errors.zalo = 'Nhập số điện thoại Zalo của shop, hoặc link dạng https://zalo.me/...';
+  }
+  if (values.facebook && !/^https:\/\/(m\.me|www\.facebook\.com|facebook\.com|www\.messenger\.com)\/[^\s"'<>]+$/.test(values.facebook)) {
+    errors.facebook = 'Nhập tên trang Facebook, hoặc link dạng https://m.me/...';
+  }
+  // Nhận cả hai cách xác minh của Google: mã trong thẻ meta, hoặc tên file dạng google<mã>.html
+  if (values.google_verify && !/^[A-Za-z0-9_-]+(\.html)?$/.test(values.google_verify)) {
+    errors.google_verify = 'Mã xác minh chưa đúng. Dán thẻ meta Google đưa cho, hoặc tên file dạng google….html.';
+  }
   if (Object.keys(errors).length) return renderSite(res, { values, errors, status: 400 });
   await saveSite(values);
   res.redirect('/admin/thong-tin?ok=1');

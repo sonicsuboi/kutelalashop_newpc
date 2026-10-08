@@ -18,10 +18,16 @@ const SOURCES = {
   tiktok: 'TikTok',
   youtube: 'YouTube',
   google: 'Google',
+  coccoc: 'Cốc Cốc',
+  bing: 'Bing',
+  yahoo: 'Yahoo',
+  duckduckgo: 'DuckDuckGo',
   'truc-tiep': 'Vào trực tiếp',
   khac: 'Web khác',
 };
 const sourceLabel = (key) => SOURCES[key] || key;
+// Các kênh là công cụ tìm kiếm, dùng cho thống kê SEO
+const SEARCH_ENGINES = ['google', 'coccoc', 'bing', 'yahoo', 'duckduckgo'];
 
 const APPS = [
   ['zalo', /zalo/i],
@@ -38,6 +44,10 @@ const SITES = [
   ['tiktok', /(^|\.)tiktok\.com$/],
   ['youtube', /(^|\.)(youtube\.com|youtu\.be)$/],
   ['google', /(^|\.)google\./],
+  ['coccoc', /(^|\.)coccoc\.com$/],
+  ['bing', /(^|\.)bing\.com$/],
+  ['yahoo', /(^|\.)yahoo\./],
+  ['duckduckgo', /(^|\.)duckduckgo\.com$/],
 ];
 const BOT = /bot|crawl|spider|slurp|preview|monitor|uptime|headless|curl|wget|python|render/i;
 
@@ -76,7 +86,8 @@ function track(req, res, next) {
   res.cookie('src', req.source, { maxAge: 30 * 60 * 1000, httpOnly: true, sameSite: 'lax' });
 
   const isPage = req.method === 'GET' && (req.get('accept') || '').includes('text/html');
-  if (isPage && !BOT.test(req.get('user-agent') || '')) {
+  req.isBot = BOT.test(req.get('user-agent') || '');
+  if (isPage && !req.isBot) {
     res.on('finish', () => {
       if (res.statusCode !== 200) return;
       db.run('INSERT INTO visits (visitor, path, product_id, source, referrer) VALUES (?, ?, ?, ?, ?)',
@@ -87,4 +98,4 @@ function track(req, res, next) {
   next();
 }
 
-module.exports = { SOURCES, sourceLabel, track };
+module.exports = { SOURCES, SEARCH_ENGINES, sourceLabel, track };

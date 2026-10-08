@@ -127,6 +127,12 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--ink); outli
 .colors { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 0 0 16px; padding: 0; list-style: none; }
 .colors li { display: flex; align-items: center; }
 .colors form { margin-left: 10px; color: var(--muted); }
+.suggest-box { position: relative; flex: 1; min-width: 180px; max-width: 420px; }
+.inline .suggest-box input[type="search"] { width: 100%; max-width: none; }
+.suggest { position: absolute; z-index: 5; top: 100%; left: 0; right: 0; max-height: 360px; margin: 2px 0 0; padding: 4px 0; overflow-y: auto; list-style: none; background: #fff; border: 1px solid var(--ink); box-shadow: 0 8px 24px rgba(0, 0, 0, .12); }
+.suggest li { display: flex; justify-content: space-between; gap: 16px; padding: 8px 12px; cursor: pointer; }
+.suggest li span { flex: none; color: var(--muted); font-size: 12px; }
+.suggest li:hover, .suggest li[aria-selected="true"] { background: var(--accent); }
 .store { margin-bottom: 20px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
 .store:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
 
