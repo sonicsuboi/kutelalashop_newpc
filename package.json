@@ -1,0 +1,19 @@
+{
+  "name": "kutelalashop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Trang web bán giày dép nữ giao diện tối giản",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "kiem-tra-anh": "node tools/kiem-tra-anh.js"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "ejs": "^3.1.10",
+    "express": "^4.21.2"
+  }
+}

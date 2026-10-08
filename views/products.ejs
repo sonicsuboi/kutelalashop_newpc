@@ -1,0 +1,43 @@
+<%- include('partials/header') %>
+
+<section class="intro">
+  <h1><%= title %></h1>
+  <p>Giày dép nữ của mùa kết hợp giữa kiểu dáng cổ điển với những điểm nhấn độc đáo, mang đến vẻ quyến rũ đậm chất riêng.</p>
+
+  <button class="filter-btn" type="button" data-toggle-filters aria-controls="filters" aria-expanded="false">
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 0v16M8 0v16M13 0v16M1 5h4M6 11h4M11 4h4" stroke="currentColor" stroke-width="1.4" fill="none"/></svg>
+    <span>Các chế độ lọc</span>
+  </button>
+</section>
+
+<section class="filters" id="filters" <%= current.category || current.sort !== 'newest' ? '' : 'hidden' %>>
+  <div class="filter-group">
+    <h2>Danh mục</h2>
+    <a href="<%= link({ category: '' }) %>" class="<%= current.category ? '' : 'active' %>">Tất cả</a>
+    <% for (const [key, label] of Object.entries(categories)) { %>
+      <a href="<%= link({ category: key }) %>" class="<%= current.category === key ? 'active' : '' %>"><%= label %></a>
+    <% } %>
+  </div>
+  <div class="filter-group">
+    <h2>Sắp xếp</h2>
+    <% for (const [key, s] of Object.entries(sorts)) { %>
+      <a href="<%= link({ sort: key }) %>" class="<%= current.sort === key ? 'active' : '' %>"><%= s.label %></a>
+    <% } %>
+  </div>
+</section>
+
+<% if (current.q) { %>
+  <p class="result-note">Kết quả cho “<%= current.q %>” · <a href="<%= link({ q: '' }) %>">Xoá tìm kiếm</a></p>
+<% } %>
+
+<% if (products.length === 0) { %>
+  <p class="empty">Không có sản phẩm phù hợp. <a href="/san-pham">Xem tất cả sản phẩm</a></p>
+<% } else { %>
+  <ul class="grid">
+    <% for (const product of products) { %>
+      <%- include('partials/card', { product }) %>
+    <% } %>
+  </ul>
+<% } %>
+
+<%- include('partials/footer') %>

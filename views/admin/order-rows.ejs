@@ -1,0 +1,18 @@
+<%# Bảng đơn hàng dùng ở trang tổng quan và trang danh sách đơn %>
+<table class="table">
+  <thead>
+    <tr><th>Mã đơn</th><th>Ngày đặt</th><th>Khách hàng</th><th class="num">Tổng tiền</th><th>Thanh toán</th><th>Trạng thái</th></tr>
+  </thead>
+  <tbody>
+    <% for (const order of orders) { %>
+      <tr>
+        <td><a href="/admin/don-hang/<%= order.id %>"><b><%= admin.orderCode(order.id) %></b></a></td>
+        <td><%= order.created_at %></td>
+        <td><%= order.name %><br><span class="muted"><%= order.phone %></span></td>
+        <td class="num"><%= formatPrice(order.total) %></td>
+        <td><%= admin.methods[order.payment_method] %><br><span class="tag pay-<%= order.payment_status %>"><%= admin.payments[order.payment_status] %></span></td>
+        <td><span class="tag st-<%= order.status %>"><%= admin.statuses[order.status] %></span></td>
+      </tr>
+    <% } %>
+  </tbody>
+</table>

@@ -1,0 +1,135 @@
+<%- include('head') %>
+<%
+  const colorRows = colors.length ? colors : [{ id: 0, name: 'Tất cả' }];
+  const sizeCols = sizes.length ? sizes : [0];
+%>
+
+<p class="crumb"><a href="/admin/san-pham">Kho sản phẩm</a> / <%= product.code || `#${product.id}` %></p>
+<div class="section-head">
+  <h1><%= title %></h1>
+  <a href="/san-pham/<%= product.slug %>" target="_blank" rel="noopener">Xem trên trang bán hàng</a>
+</div>
+
+<% if (saved) { %><p class="notice ok" role="status">Đã lưu.</p><% } %>
+
+<form class="card wide" action="/admin/san-pham/<%= product.id %>" method="post">
+  <p class="muted">Mã: <b><%= product.code || '—' %></b> · Danh mục: <b><%= admin.categories[product.category] || product.category %></b></p>
+
+  <%- include('product-fields', { v: product, errors }) %>
+
+  <h2>Tồn kho</h2>
+  <p class="muted">Số lượng còn theo từng màu và size. Khách không đặt được quá số này; đặt hàng thì tự trừ, huỷ đơn thì tự cộng lại.</p>
+  <div class="scroll">
+    <table class="table stock">
+      <thead>
+        <tr><th>Màu</th><% for (const s of sizeCols) { %><th><%= s ? `Size ${s}` : 'Số lượng' %></th><% } %></tr>
+      </thead>
+      <tbody>
+        <% for (const c of colorRows) { %>
+          <tr>
+            <th><% if (c.hex) { %><i class="dot" style="background: <%= c.hex %>"></i><% } %><%= c.name %></th>
+            <% for (const s of sizeCols) { %>
+              <td><input type="number" name="stock_<%= c.id %>_<%= s %>" value="<%= stock[`${c.id}.${s}`] || 0 %>" min="0" max="9999" aria-label="<%= c.name %><%= s ? `, size ${s}` : '' %>"></td>
+            <% } %>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <button class="btn" type="submit">Lưu thông tin và tồn kho</button>
+</form>
+
+<section class="card wide">
+  <h2>Màu sắc</h2>
+  <% if (colors.length) { %>
+    <ul class="colors">
+      <% for (const c of colors) { %>
+        <li>
+          <i class="dot" style="background: <%= c.hex %>"></i><%= c.name %>
+          <form action="/admin/san-pham/<%= product.id %>/mau/<%= c.id %>/xoa" method="post" onsubmit="return confirm('Xoá màu <%= c.name %> cùng số tồn kho của màu này?')">
+            <button class="link" type="submit">Xoá</button>
+          </form>
+        </li>
+      <% } %>
+    </ul>
+  <% } else { %>
+    <p class="muted">Sản phẩm chưa có màu để khách chọn.</p>
+  <% } %>
+  <form class="inline" action="/admin/san-pham/<%= product.id %>/mau" method="post">
+    <input type="text" name="name" maxlength="40" placeholder="Tên màu, vd: Nâu bò" aria-label="Tên màu" required>
+    <input type="color" name="hex" value="#111111" aria-label="Màu hiển thị">
+    <button class="btn btn-light" type="submit">Thêm màu</button>
+  </form>
+</section>
+
+<section class="card wide" id="anh">
+  <h2>Ảnh và video</h2>
+  <% if (folder) { %>
+    <form class="upload" data-upload="/admin/san-pham/<%= product.id %>/tai-len">
+      <label class="field">
+        <span>Chọn ảnh hoặc video (chọn được nhiều file)</span>
+        <input type="file" multiple accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" required>
+      </label>
+      <% if (colors.length) { %>
+        <label class="field small">
+          <span>Thuộc màu</span>
+          <select name="mau">
+            <option value="">Chung</option>
+            <% for (const c of colors) { %><option value="<%= c.id %>"><%= c.name %></option><% } %>
+          </select>
+        </label>
+      <% } %>
+      <button class="btn" type="submit">Tải lên</button>
+      <p class="muted" data-upload-status></p>
+    </form>
+    <p class="muted">Video (.mp4) luôn hiện đầu tiên ở trang chi tiết, sau đó tới ảnh theo tên file; ảnh đầu tiên là ảnh đại diện. Video nên dưới 50 MB để khách tải nhanh.</p>
+
+    <% if (media.length) { %>
+      <ul class="media-list">
+        <% for (const m of media) { const name = m.url.split('/').pop(); %>
+          <li>
+            <% if (m.kind === 'video') { %><video src="<%= m.url %>" muted preload="metadata"></video><% } else { %><img src="<%= m.url %>" alt="" loading="lazy"><% } %>
+            <span><%= name %></span>
+            <form action="/admin/san-pham/<%= product.id %>/xoa-file" method="post" onsubmit="return confirm('Xoá file <%= name %>?')">
+              <input type="hidden" name="file" value="<%= name %>">
+              <button class="link" type="submit">Xoá</button>
+            </form>
+          </li>
+        <% } %>
+      </ul>
+    <% } %>
+    <p class="muted">Thư mục trên máy: <code><%= folder %></code></p>
+  <% } else { %>
+    <p class="muted">Sản phẩm này chưa có mã nên chưa có thư mục ảnh.</p>
+  <% } %>
+</section>
+
+<script>
+  // Gửi lần lượt từng file lên máy chủ, xong thì tải lại trang để thấy danh sách mới
+  document.querySelectorAll('[data-upload]').forEach((form) => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const files = [...form.querySelector('input[type=file]').files];
+      const status = form.querySelector('[data-upload-status]');
+      const color = form.querySelector('select[name=mau]');
+      const button = form.querySelector('button');
+      button.disabled = true;
+      for (const [i, file] of files.entries()) {
+        status.textContent = `Đang tải ${i + 1}/${files.length}: ${file.name}…`;
+        const url = form.dataset.upload + '?ten=' + encodeURIComponent(file.name) + (color && color.value ? '&mau=' + color.value : '');
+        const res = await fetch(url, { method: 'POST', body: file });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          status.textContent = `Lỗi với ${file.name}: ${err.error || res.status}`;
+          button.disabled = false;
+          return;
+        }
+      }
+      location.hash = 'anh';
+      location.reload();
+    });
+  });
+</script>
+
+<%- include('foot') %>

@@ -1,0 +1,43 @@
+<%# Hình sản phẩm: dùng ảnh thật nếu có image_url, không thì vẽ hình minh hoạ theo loại giày.
+    product.outline = true thì chỉ vẽ nét viền theo màu chữ. %>
+<% if (product.image_url) { %>
+  <img src="<%= product.image_url %>" alt="<%= product.name %>" loading="lazy">
+<% } else {
+  const outline = Boolean(product.outline);
+  const upper = outline ? 'none' : product.color;
+  const sole = outline ? 'none' : product.sole_color;
+  const strap = outline ? 'currentColor' : product.color;
+  const detail = outline ? 'currentColor' : product.sole_color;
+%>
+  <svg viewBox="0 0 300 140" <% if (product.name) { %>role="img" aria-label="<%= product.name %>"<% } else { %>aria-hidden="true"<% } %>
+       stroke="<%= outline ? 'currentColor' : 'none' %>" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <% if (product.category === 'sneaker') { %>
+      <path fill="<%= upper %>" d="M36 98V60q0-12 14-12h34q10 0 16 8l14 14q40 14 120 18q32 2 32 10z"/>
+      <rect fill="<%= sole %>" x="30" y="98" width="240" height="16" rx="8"/>
+      <path fill="none" stroke="<%= detail %>" d="M104 62l-10 10M118 70l-10 10M132 75l-9 10"/>
+    <% } else if (product.category === 'cao-got') { %>
+      <path fill="<%= upper %>" d="M48 36C56 60 90 84 130 90C160 80 215 82 272 104C270 112 262 113 250 113H185C140 110 90 86 62 62L48 60Z"/>
+      <path fill="<%= sole %>" d="M48 58l14 4-6 51h-8z"/>
+    <% } else if (product.category === 'sandal') { %>
+      <rect fill="<%= sole %>" x="30" y="100" width="240" height="12" rx="6"/>
+      <path fill="none" stroke="<%= strap %>" stroke-width="<%= outline ? 4 : 11 %>" d="M198 100q18-34 42 0M70 100L78 52M62 56h34M80 58q46 12 68 42"/>
+    <% } else if (product.category === 'bup-be') { %>
+      <path fill="<%= upper %>" d="M36 72C36 96 44 104 60 104H250C266 104 272 98 270 92C250 78 215 76 190 84C140 100 80 92 62 66C52 56 36 58 36 72Z"/>
+      <rect fill="<%= sole %>" x="36" y="104" width="234" height="6" rx="3"/>
+      <circle fill="<%= sole %>" cx="214" cy="85" r="5"/>
+    <% } else if (product.category === 'kinh') { %>
+      <path fill="none" stroke="<%= strap %>" stroke-width="<%= outline ? 4 : 6 %>" d="M44 62L10 52M256 62l34-10M142 66q8-8 16 0"/>
+      <ellipse fill="<%= sole %>" stroke="<%= strap %>" stroke-width="<%= outline ? 4 : 9 %>" cx="95" cy="74" rx="50" ry="28"/>
+      <ellipse fill="<%= sole %>" stroke="<%= strap %>" stroke-width="<%= outline ? 4 : 9 %>" cx="205" cy="74" rx="50" ry="28"/>
+    <% } else if (product.category === 'tui') { %>
+      <path fill="none" stroke="<%= strap %>" stroke-width="<%= outline ? 4 : 9 %>" d="M112 58q38-52 76 0"/>
+      <path fill="<%= upper %>" d="M84 58h132l18 60H66z"/>
+    <% } else if (product.category === 'boot') { %>
+      <path fill="<%= upper %>" d="M60 18H120L122 62C150 72 220 74 262 88C272 92 272 104 268 104H60Z"/>
+      <path fill="<%= sole %>" d="M56 104H270V112H100V120H56Z"/>
+    <% } else { %>
+      <rect fill="<%= sole %>" x="30" y="94" width="240" height="20" rx="10"/>
+      <path fill="<%= upper %>" d="M128 94C140 50 204 50 234 94Z"/>
+    <% } %>
+  </svg>
+<% } %>

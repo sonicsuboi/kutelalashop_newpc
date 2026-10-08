@@ -1,0 +1,80 @@
+<%- include('head') %>
+
+<p class="crumb"><a href="/admin/don-hang">Đơn hàng</a> / <%= admin.orderCode(order.id) %></p>
+<h1>Đơn <%= admin.orderCode(order.id) %>
+  <span class="tag st-<%= order.status %>"><%= admin.statuses[order.status] %></span>
+  <span class="tag pay-<%= order.payment_status %>"><%= admin.payments[order.payment_status] %></span>
+</h1>
+
+<div class="cols">
+  <section>
+    <h2>Sản phẩm</h2>
+    <table class="table">
+      <thead><tr><th>Mã</th><th>Sản phẩm</th><th>Màu / size</th><th class="num">SL</th><th class="num">Đơn giá</th><th class="num">Thành tiền</th></tr></thead>
+      <tbody>
+        <% for (const item of items) { %>
+          <tr>
+            <td><%= item.code || '—' %></td>
+            <td><% if (item.slug) { %><a href="/admin/san-pham/<%= item.product_id %>"><%= item.name %></a><% } else { %><%= item.name %><% } %></td>
+            <td><%= [item.color, item.size && `Size ${item.size}`].filter(Boolean).join(' · ') || '—' %></td>
+            <td class="num"><%= item.qty %></td>
+            <td class="num"><%= formatPrice(item.price) %></td>
+            <td class="num"><%= formatPrice(item.price * item.qty) %></td>
+          </tr>
+        <% } %>
+      </tbody>
+      <tfoot><tr><th colspan="5">Tổng cộng</th><th class="num"><%= formatPrice(order.total) %></th></tr></tfoot>
+    </table>
+  </section>
+
+  <aside>
+    <section class="card">
+      <h2>Khách hàng</h2>
+      <dl>
+        <dt>Họ tên</dt><dd><%= order.name %></dd>
+        <dt>Điện thoại</dt><dd><a href="tel:<%= order.phone.replace(/\s/g, '') %>"><%= order.phone %></a></dd>
+        <dt>Địa chỉ</dt><dd><%= order.address %></dd>
+        <% if (order.note) { %><dt>Ghi chú</dt><dd><%= order.note %></dd><% } %>
+        <dt>Ngày đặt</dt><dd><%= order.created_at %> (giờ UTC)</dd>
+      </dl>
+    </section>
+
+    <section class="card">
+      <h2>Thanh toán</h2>
+      <dl>
+        <dt>Hình thức</dt><dd><%= admin.methods[order.payment_method] %></dd>
+        <dt>Tình trạng</dt><dd><%= admin.payments[order.payment_status] %><% if (order.paid_at) { %> lúc <%= order.paid_at %><% } %></dd>
+        <% if (order.payment_ref) { %><dt>Mã giao dịch</dt><dd><%= order.payment_ref %></dd><% } %>
+      </dl>
+      <% if (order.status === 'cancelled' && order.payment_status === 'paid') { %>
+        <p class="error">Đơn đã huỷ nhưng khách đã trả tiền: cần hoàn tiền cho khách.</p>
+      <% } %>
+      <% if (order.payment_status !== 'paid' && order.status !== 'cancelled') { %>
+        <form action="/admin/don-hang/<%= order.id %>/da-thanh-toan" method="post">
+          <button class="btn btn-light" type="submit">Đánh dấu đã thu tiền</button>
+        </form>
+      <% } %>
+    </section>
+
+    <section class="card">
+      <h2>Xử lý đơn</h2>
+      <% if (order.status === 'cancelled') { %>
+        <p class="muted">Đơn đã huỷ, hàng đã được cộng lại vào kho.</p>
+      <% } else { %>
+        <form class="inline" action="/admin/don-hang/<%= order.id %>/trang-thai" method="post">
+          <select name="status" aria-label="Trạng thái đơn">
+            <% for (const [key, label] of Object.entries(admin.statuses)) { if (key === 'cancelled') continue; %>
+              <option value="<%= key %>" <%= order.status === key ? 'selected' : '' %>><%= label %></option>
+            <% } %>
+          </select>
+          <button class="btn" type="submit">Cập nhật</button>
+        </form>
+        <form action="/admin/don-hang/<%= order.id %>/huy" method="post" onsubmit="return confirm('Huỷ đơn này và trả hàng về kho?')">
+          <button class="btn btn-danger" type="submit">Huỷ đơn, trả hàng về kho</button>
+        </form>
+      <% } %>
+    </section>
+  </aside>
+</div>
+
+<%- include('foot') %>

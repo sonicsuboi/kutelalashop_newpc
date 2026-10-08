@@ -1,0 +1,39 @@
+<%- include('head') %>
+
+<h1><%= title %></h1>
+
+<div class="stats">
+  <a class="stat" href="/admin/don-hang?status=new"><b><%= stats.newOrders %></b><span>Đơn mới chờ xác nhận</span></a>
+  <a class="stat" href="/admin/don-hang"><b><%= stats.inProgress %></b><span>Đơn đang xử lý / đang giao</span></a>
+  <div class="stat"><b><%= formatPrice(stats.openRevenue) %></b><span>Giá trị đơn chưa hoàn tất</span></div>
+  <div class="stat"><b><%= formatPrice(stats.doneRevenue) %></b><span>Doanh thu đơn đã hoàn tất</span></div>
+  <a class="stat" href="/admin/san-pham"><b><%= stats.units %></b><span>Sản phẩm còn trong kho (<%= stats.products %> mẫu)</span></a>
+  <a class="stat" href="/admin/san-pham"><b><%= stats.soldOut %></b><span>Mẫu đã hết hàng</span></a>
+</div>
+
+<section>
+  <div class="section-head"><h2>Đơn hàng gần đây</h2><a href="/admin/don-hang">Xem tất cả</a></div>
+  <% if (recent.length) { %>
+    <%- include('order-rows', { orders: recent }) %>
+  <% } else { %>
+    <p class="muted">Chưa có đơn hàng nào.</p>
+  <% } %>
+</section>
+
+<section>
+  <div class="section-head"><h2>Mẫu còn ít hàng nhất</h2><a href="/admin/san-pham">Xem kho</a></div>
+  <table class="table">
+    <thead><tr><th>Mã</th><th>Sản phẩm</th><th class="num">Còn</th></tr></thead>
+    <tbody>
+      <% for (const p of lowStock) { %>
+        <tr>
+          <td><%= p.code || '—' %></td>
+          <td><a href="/admin/san-pham/<%= p.id %>"><%= p.name %></a></td>
+          <td class="num <%= p.stock_total ? '' : 'warn' %>"><%= p.stock_total %></td>
+        </tr>
+      <% } %>
+    </tbody>
+  </table>
+</section>
+
+<%- include('foot') %>

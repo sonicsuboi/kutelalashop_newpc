@@ -1,0 +1,33 @@
+<%- include('head') %>
+
+<p class="crumb"><a href="/admin/san-pham">Kho sản phẩm</a> / Thêm sản phẩm</p>
+<h1><%= title %></h1>
+
+<form class="card wide" action="/admin/san-pham/moi" method="post">
+  <div class="row">
+    <label class="field">
+      <span>Mã sản phẩm</span>
+      <input type="text" name="code" value="<%= values.code || '' %>" maxlength="30" required placeholder="vd: KRM7633">
+      <small>Cũng là tên thư mục ảnh. Không đổi được sau khi tạo.</small>
+      <% if (errors.code) { %><em><%= errors.code %></em><% } %>
+    </label>
+    <label class="field">
+      <span>Danh mục</span>
+      <select name="category" required>
+        <option value="">Chọn danh mục</option>
+        <% for (const [key, label] of Object.entries(admin.categories)) { %>
+          <option value="<%= key %>" <%= values.category === key ? 'selected' : '' %>><%= label %></option>
+        <% } %>
+      </select>
+      <small>Không đổi được sau khi tạo.</small>
+      <% if (errors.category) { %><em><%= errors.category %></em><% } %>
+    </label>
+  </div>
+
+  <%- include('product-fields', { v: values, errors }) %>
+
+  <button class="btn" type="submit">Tạo sản phẩm</button>
+  <p class="muted">Sau khi tạo, bạn thêm màu, nhập số lượng tồn kho và chép ảnh vào thư mục của sản phẩm.</p>
+</form>
+
+<%- include('foot') %>

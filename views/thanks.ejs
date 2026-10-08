@@ -1,0 +1,13 @@
+<%- include('partials/header') %>
+
+<section class="intro">
+  <h1><%= title %></h1>
+  <% if (paid) { %>
+    <p>Cảm ơn bạn. Chúng tôi đã nhận được thanh toán cho đơn hàng <b><%= code %></b> và sẽ sớm giao hàng cho bạn.</p>
+  <% } else { %>
+    <p>Cảm ơn bạn. Mã đơn hàng của bạn là <b><%= code %></b>. Tư vấn viên sẽ gọi điện xác nhận trong thời gian sớm nhất.</p>
+  <% } %>
+  <a class="more" href="/san-pham">Tiếp tục xem sản phẩm</a>
+</section>
+
+<%- include('partials/footer') %>

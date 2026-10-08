@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title><%= title %> | Quản trị <%= shopName %></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;700;800&display=swap">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+  <% if (!locals.bare) { %>
+    <header class="bar">
+      <a class="brand" href="/admin"><%= shopName %> <span>Quản trị</span></a>
+      <nav>
+        <a href="/admin" class="<%= admin.section === '' ? 'active' : '' %>">Tổng quan</a>
+        <a href="/admin/don-hang" class="<%= admin.section === 'don-hang' ? 'active' : '' %>">Đơn hàng</a>
+        <a href="/admin/san-pham" class="<%= admin.section === 'san-pham' ? 'active' : '' %>">Kho sản phẩm</a>
+      </nav>
+      <div class="bar-end">
+        <a href="/" target="_blank" rel="noopener">Xem trang bán hàng</a>
+        <form action="/admin/dang-xuat" method="post"><button class="link" type="submit">Đăng xuất</button></form>
+      </div>
+    </header>
+  <% } %>
+  <main class="<%= locals.bare ? 'narrow' : '' %>">

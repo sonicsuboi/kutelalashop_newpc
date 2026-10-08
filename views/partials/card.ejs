@@ -1,0 +1,22 @@
+<li class="card<%= locals.big ? ' card-big' : '' %>" data-id="<%= product.id %>">
+  <a class="card-media" href="/san-pham/<%= product.slug %>">
+    <% if (product.badge) { %><span class="badge"><%= product.badge %></span><% } %>
+    <%- include('shoe', { product }) %>
+  </a>
+  <div class="card-body">
+    <div class="card-head">
+      <h3><a href="/san-pham/<%= product.slug %>"><%= product.name %></a></h3>
+      <button class="fav" type="button" data-fav aria-pressed="false" aria-label="Thêm vào yêu thích">
+        <svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.8l2.5 5.3 5.7.7-4.2 4 1.1 5.7L10 14.7l-5.1 2.8L6 11.8l-4.2-4 5.7-.7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <p class="colors"><%= [product.color_count && `${product.color_count} màu`, !product.stock_total && 'Hết hàng'].filter(Boolean).join(' · ') %></p>
+    <p class="price"><%= formatPrice(product.price) %></p>
+    <div class="card-actions">
+      <a class="more" href="/san-pham/<%= product.slug %>">Xem chi tiết</a>
+      <% if (product.stock_total) { %>
+        <button class="more quick-add" type="button" data-quick="<%= product.slug %>">Thêm vào giỏ</button>
+      <% } %>
+    </div>
+  </div>
+</li>

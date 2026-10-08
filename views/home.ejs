@@ -1,0 +1,85 @@
+<%- include('partials/header') %>
+
+<%
+  // Chiếc giày cao gót đứng vào chỗ chữ L đầu tiên của tên shop (gót giày là nét dọc của chữ L)
+  const cut = shopName.indexOf('L');
+%>
+<section class="hero" style="--hero-img: url('<%= heroImage %>')">
+  <div class="hero-copy">
+    <p class="eyebrow">Bộ sưu tập mới</p>
+    <p class="hero-word" role="img" aria-label="<%= shopName %>">
+      <% if (cut === -1) { %><%= shopName %><% } else { %><span><%= shopName.slice(0, cut) %></span><svg viewBox="0 0 150 100" aria-hidden="true"><path fill="var(--accent)" d="M3 20h25l-5 80H10z"/><path fill="currentColor" d="M0 0C10 30 44 56 80 62C104 56 134 70 150 90C150 97 146 100 138 100H92C66 98 44 84 30 60L0 30Z"/></svg><span><%= shopName.slice(cut + 1) %></span><% } %>
+    </p>
+    <h1>Bước khác đi.</h1>
+    <p>Giày dép nữ dáng cổ điển, đường nét tối giản, thêm một chút bất ngờ.</p>
+    <a class="btn" href="/san-pham">Xem bộ sưu tập</a>
+  </div>
+</section>
+
+<%# Dải chữ chạy: nội dung lặp 2 lần để chạy liền mạch, lần thứ hai ẩn với trình đọc màn hình %>
+<nav class="marquee" aria-label="Danh mục nhanh">
+  <div class="marquee-track">
+    <% for (let i = 0; i < 2; i++) { const copy = i === 1 ? ' aria-hidden="true" tabindex="-1"' : ''; %>
+      <% for (const [key, label] of Object.entries(categories)) { %>
+        <a href="/san-pham?loai=<%= key %>"<%- copy %>><%= label %></a><span aria-hidden="true">✦</span>
+      <% } %>
+      <a href="/san-pham"<%- copy %>>Sản phẩm mới</a><span aria-hidden="true">✦</span>
+      <a href="/gioi-thieu"<%- copy %>><%= shopName %></a><span aria-hidden="true">✦</span>
+    <% } %>
+  </div>
+</nav>
+
+<section>
+  <div class="section-head">
+    <h2>Sản phẩm nổi bật</h2>
+    <a class="more" href="/san-pham">Xem tất cả</a>
+  </div>
+  <ul class="grid grid-feature">
+    <% featured.forEach((product, i) => { %>
+      <%- include('partials/card', { product, big: i === 0 }) %>
+    <% }) %>
+  </ul>
+</section>
+
+<section>
+  <div class="section-head">
+    <h2>Chọn theo danh mục</h2>
+  </div>
+  <ol class="category-list">
+    <% Object.entries(categories).forEach(([key, label], i) => { %>
+      <li>
+        <a href="/san-pham?loai=<%= key %>"<% if (categoryImages[key]) { %> style="--photo: url('<%= categoryImages[key] %>')"<% } %>>
+          <span class="idx">0<%= i + 1 %></span>
+          <span class="name"><%= label %></span>
+          <span class="art"><%- include('partials/shoe', { product: { category: key, name: '', outline: true, image_url: null } }) %></span>
+          <span class="count"><%= counts[key] || 0 %> mẫu</span>
+        </a>
+      </li>
+    <% }) %>
+  </ol>
+</section>
+
+<section class="story">
+  <%# Có ảnh story thì phủ một lớp tối lên ảnh để chữ trắng đọc được, không có thì giữ nền đen %>
+  <div class="story-text"<% if (storyImage) { %> style="background-image: linear-gradient(rgba(0, 0, 0, .58), rgba(0, 0, 0, .58)), url('<%= storyImage %>')"<% } %>>
+    <p class="eyebrow">Về <%= shopName %></p>
+    <h2>Ít chi tiết hơn,<br>nhiều cá tính hơn.</h2>
+    <p>Chúng tôi chọn từng đôi giày theo một tiêu chí: bỏ bớt những gì thừa để phần còn lại nổi bật.</p>
+    <a class="btn" href="/gioi-thieu">Câu chuyện của chúng tôi</a>
+  </div>
+  <%# Có ảnh cửa hàng thì dùng ảnh làm nền, không có thì giữ hình vẽ trên nền xám %>
+  <% if (storeImage) { %>
+    <a class="story-art has-photo" href="/cua-hang" style="background-image: url('<%= storeImage %>')">
+      <span class="eyebrow">Hệ thống cửa hàng</span>
+      <span class="story-art-title">Thử giày tại cửa hàng</span>
+      <span class="btn">Tìm cửa hàng gần bạn</span>
+    </a>
+  <% } else { %>
+    <a class="story-art" href="/cua-hang">
+      <%- include('partials/shoe', { product: { category: 'sneaker', name: '', color: '#111111', sole_color: 'var(--accent)', image_url: null } }) %>
+      <span class="more">Thử giày tại cửa hàng</span>
+    </a>
+  <% } %>
+</section>
+
+<%- include('partials/footer') %>

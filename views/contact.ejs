@@ -1,0 +1,47 @@
+<%- include('partials/header') %>
+
+<section class="intro">
+  <h1><%= title %></h1>
+  <p>Để lại lời nhắn, tư vấn viên sẽ phản hồi qua email của bạn.</p>
+</section>
+
+<section class="contact">
+  <% if (sent) { %>
+    <div class="notice" role="status">
+      <h2>Đã gửi tin nhắn</h2>
+      <p>Cảm ơn bạn. Chúng tôi sẽ phản hồi sớm nhất có thể.</p>
+      <a class="more" href="/san-pham">Tiếp tục xem sản phẩm</a>
+    </div>
+  <% } else { %>
+    <form class="form" action="/lien-he" method="post" novalidate>
+      <label class="field">
+        <span>Họ tên</span>
+        <input type="text" name="name" value="<%= values.name %>" maxlength="100" autocomplete="name" required>
+        <% if (errors.name) { %><em><%= errors.name %></em><% } %>
+      </label>
+      <label class="field">
+        <span>Email</span>
+        <input type="email" name="email" value="<%= values.email %>" maxlength="200" autocomplete="email" required>
+        <% if (errors.email) { %><em><%= errors.email %></em><% } %>
+      </label>
+      <label class="field">
+        <span>Nội dung</span>
+        <textarea name="message" rows="5" maxlength="2000" required><%= values.message %></textarea>
+        <% if (errors.message) { %><em><%= errors.message %></em><% } %>
+      </label>
+      <button class="btn btn-dark" type="submit">Gửi tin nhắn</button>
+    </form>
+  <% } %>
+
+  <aside class="contact-side">
+    <h2>Liên hệ trực tiếp</h2>
+    <p>Email: <a href="mailto:<%= site.email %>"><%= site.email %></a></p>
+    <p>Điện thoại: <a href="tel:<%= site.phone.replace(/\s/g, '') %>"><%= site.phone %></a></p>
+    <h2>Ghé cửa hàng</h2>
+    <p><a href="/cua-hang">Xem hệ thống cửa hàng</a></p>
+    <h2>Hỗ trợ</h2>
+    <p><a href="/ho-tro/cau-hoi-thuong-gap">Câu hỏi thường gặp</a></p>
+  </aside>
+</section>
+
+<%- include('partials/footer') %>

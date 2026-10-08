@@ -1,0 +1,85 @@
+<%- include('partials/header') %>
+
+<section class="intro">
+  <h1><%= title %></h1>
+  <% if (lines.length) { %>
+    <p>Kiểm tra lại màu, size và số lượng rồi để lại thông tin nhận hàng. Tư vấn viên sẽ gọi xác nhận đơn.</p>
+  <% } %>
+</section>
+
+<% if (errors.stock) { %><p class="cart-alert" role="alert"><%= errors.stock %></p><% } %>
+
+<% if (lines.length === 0) { %>
+  <p class="empty">Giỏ hàng đang trống. <a href="/san-pham">Xem sản phẩm mới</a></p>
+<% } else { %>
+  <div class="cart">
+    <div>
+      <ul class="cart-lines">
+        <% for (const line of lines) { %>
+          <li>
+            <a class="cart-thumb" href="/san-pham/<%= line.product.slug %>" tabindex="-1" aria-hidden="true">
+              <%- include('partials/shoe', { product: { ...line.product, name: '' } }) %>
+            </a>
+            <div class="cart-info">
+              <h2><a href="/san-pham/<%= line.product.slug %>"><%= line.product.name %></a></h2>
+              <p class="colors"><%= [line.colorName && `Màu ${line.colorName}`, line.size && `Size ${line.size}`].filter(Boolean).join(' · ') %></p>
+              <p class="price"><%= formatPrice(line.product.price) %></p>
+              <% if (line.left < line.qty) { %><p class="option-error"><%= line.left ? `Chỉ còn ${line.left} sản phẩm` : 'Đã hết hàng' %></p><% } %>
+              <form class="cart-edit" action="/gio-hang/cap-nhat" method="post">
+                <input type="hidden" name="key" value="<%= line.key %>">
+                <label>
+                  <span class="sr-only">Số lượng</span>
+                  <input type="number" name="qty" value="<%= line.qty %>" min="1" max="<%= Math.min(maxQty, Math.max(line.left, 1)) %>" inputmode="numeric" data-auto-submit>
+                </label>
+                <button class="text-btn" type="submit">Cập nhật</button>
+                <button class="text-btn" type="submit" name="remove" value="1">Xoá</button>
+              </form>
+            </div>
+            <p class="cart-subtotal"><%= formatPrice(line.subtotal) %></p>
+          </li>
+        <% } %>
+      </ul>
+      <p class="cart-total"><span>Tổng cộng</span> <b><%= formatPrice(total) %></b></p>
+      <a class="more" href="/san-pham">Tiếp tục xem sản phẩm</a>
+    </div>
+
+    <form class="form checkout" action="/gio-hang/dat-hang" method="post" novalidate>
+      <h2>Thông tin nhận hàng</h2>
+      <label class="field">
+        <span>Họ tên</span>
+        <input type="text" name="name" value="<%= values.name %>" maxlength="100" autocomplete="name" required>
+        <% if (errors.name) { %><em><%= errors.name %></em><% } %>
+      </label>
+      <label class="field">
+        <span>Số điện thoại</span>
+        <input type="tel" name="phone" value="<%= values.phone %>" maxlength="15" autocomplete="tel" required>
+        <% if (errors.phone) { %><em><%= errors.phone %></em><% } %>
+      </label>
+      <label class="field">
+        <span>Địa chỉ nhận hàng</span>
+        <textarea name="address" rows="2" maxlength="300" autocomplete="street-address" required><%= values.address %></textarea>
+        <% if (errors.address) { %><em><%= errors.address %></em><% } %>
+      </label>
+      <label class="field">
+        <span>Ghi chú (không bắt buộc)</span>
+        <textarea name="note" rows="2" maxlength="500"><%= values.note %></textarea>
+      </label>
+      <fieldset class="pay">
+        <legend>Thanh toán</legend>
+        <label>
+          <input type="radio" name="payment" value="cod" <%= values.payment === 'vnpay' ? '' : 'checked' %>>
+          <span><b>Thanh toán khi nhận hàng</b><small>Tư vấn viên gọi xác nhận trước khi giao.</small></span>
+        </label>
+        <% if (cardPayment) { %>
+          <label>
+            <input type="radio" name="payment" value="vnpay" <%= values.payment === 'vnpay' ? 'checked' : '' %>>
+            <span><b>Thẻ ATM, Visa, Mastercard, JCB, QR</b><small>Thanh toán qua cổng VNPay. Bạn nhập thẻ trên trang của VNPay.</small></span>
+          </label>
+        <% } %>
+      </fieldset>
+      <button class="btn btn-dark" type="submit">Đặt hàng</button>
+    </form>
+  </div>
+<% } %>
+
+<%- include('partials/footer') %>

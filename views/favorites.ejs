@@ -1,0 +1,16 @@
+<%- include('partials/header') %>
+
+<section class="intro">
+  <h1><%= title %></h1>
+  <p>Những đôi giày bạn đã đánh dấu sao. Danh sách được lưu trên trình duyệt này.</p>
+</section>
+
+<p class="empty" id="fav-empty" hidden>Bạn chưa chọn sản phẩm nào. <a href="/san-pham">Xem sản phẩm mới</a></p>
+
+<ul class="grid" data-only-favs>
+  <% for (const product of products) { %>
+    <%- include('partials/card', { product }) %>
+  <% } %>
+</ul>
+
+<%- include('partials/footer') %>

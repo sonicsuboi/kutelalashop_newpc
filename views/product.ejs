@@ -1,0 +1,140 @@
+<%- include('partials/header') %>
+<%
+  const firstColor = colors[0];
+  // Có ảnh/video thật thì hiện chúng; chưa có thì hiện 4 góc nhìn của hình vẽ để khách vẫn bấm xem được
+  const views = media.length
+    ? media.map((m) => ({ url: m.url, kind: m.kind, color: m.color_id, cls: '' }))
+    : [{ cls: '' }, { cls: 'view-flip' }, { cls: 'view-tilt' }, { cls: 'view-line', outline: true }];
+  // Hình vẽ lấy màu từ biến --c / --s của khung hình, nên đổi màu là đổi ngay
+  const drawing = (view, name) =>
+    ({ ...product, name, image_url: null, outline: view.outline, color: 'var(--c)', sole_color: 'var(--s)' });
+%>
+
+<article class="detail">
+  <div class="gallery<%= media.length ? ' has-media' : '' %>" data-gallery
+       style="--c: <%= firstColor ? firstColor.hex : product.color %>; --s: <%= firstColor ? firstColor.sole_hex : product.sole_color %>">
+    <div class="gallery-main">
+      <% if (product.badge) { %><span class="badge"><%= product.badge %></span><% } %>
+      <% views.forEach((view, i) => { %>
+        <div class="slide <%= view.cls %><%= i === 0 ? ' active' : '' %>" data-slide data-color="<%= view.color || '' %>">
+          <% if (view.kind === 'video') { %>
+            <video src="<%= view.url %>" controls playsinline preload="metadata" aria-label="Video <%= product.name %>"></video>
+          <% } else if (view.url) { %>
+            <img src="<%= view.url %>" alt="<%= product.name %>, hình <%= i + 1 %>" <%= i === 0 ? '' : 'loading="lazy"' %>>
+          <% } else { %>
+            <%- include('partials/shoe', { product: drawing(view, `${product.name}, hình ${i + 1}`) }) %>
+          <% } %>
+        </div>
+      <% }) %>
+      <% if (views.length > 1) { %>
+        <button class="gallery-nav prev" type="button" data-prev aria-label="Hình trước">
+          <svg width="12" height="20" viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2L2 10l8 8" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+        </button>
+        <button class="gallery-nav next" type="button" data-next aria-label="Hình sau">
+          <svg width="12" height="20" viewBox="0 0 12 20" aria-hidden="true"><path d="M2 2l8 8-8 8" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>
+        </button>
+      <% } %>
+    </div>
+    <% if (views.length > 1) { %>
+      <div class="gallery-thumbs">
+        <% views.forEach((view, i) => { %>
+          <button class="<%= view.cls %>" type="button" data-thumb aria-current="<%= i === 0 %>"
+                  aria-label="<%= view.kind === 'video' ? 'Xem video' : `Xem hình ${i + 1}` %>">
+            <% if (view.kind === 'video') { %>
+              <video src="<%= view.url %>" preload="metadata" muted tabindex="-1"></video>
+              <span class="play" aria-hidden="true">
+                <svg width="22" height="22" viewBox="0 0 22 22"><path d="M6 3l13 8-13 8z" fill="currentColor"/></svg>
+              </span>
+            <% } else if (view.url) { %>
+              <img src="<%= view.url %>" alt="" loading="lazy">
+            <% } else { %>
+              <%- include('partials/shoe', { product: drawing(view, '') }) %>
+            <% } %>
+          </button>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+
+  <div class="detail-info">
+    <p class="crumb"><a href="/san-pham">Sản phẩm mới</a> / <a href="/san-pham?loai=<%= product.category %>"><%= categories[product.category] %></a></p>
+    <h1><%= product.name %></h1>
+    <% if (product.code) { %><p class="detail-code">Mã: <%= product.code %></p><% } %>
+    <p class="price"><%= formatPrice(product.price) %></p>
+    <% if (product.description) { %><p class="desc"><%= product.description %></p><% } %>
+
+    <form class="buy" action="/gio-hang/them" method="post" data-stock="<%= JSON.stringify(stock) %>">
+      <input type="hidden" name="product_id" value="<%= product.id %>">
+
+      <% if (colors.length) { %>
+        <fieldset class="options">
+          <legend>Màu sắc: <b data-color-name><%= firstColor.name %></b></legend>
+          <% colors.forEach((color, i) => { %>
+            <label class="swatch" title="<%= color.name %>">
+              <input type="radio" name="color" value="<%= color.id %>" <%= i === 0 ? 'checked' : '' %>
+                     data-name="<%= color.name %>" data-hex="<%= color.hex %>" data-sole="<%= color.sole_hex %>">
+              <span style="background: <%= color.hex %>"></span>
+              <span class="sr-only"><%= color.name %></span>
+            </label>
+          <% }) %>
+        </fieldset>
+      <% } %>
+
+      <% if (sizes.length) { %>
+        <fieldset class="options">
+          <legend>Size <a href="/ho-tro/cau-hoi-thuong-gap">Cách chọn size</a></legend>
+          <% for (const size of sizes) { %>
+            <label class="size">
+              <input type="radio" name="size" value="<%= size %>" required>
+              <span><%= size %></span>
+            </label>
+          <% } %>
+          <% if (needSize) { %><em class="option-error" role="alert">Vui lòng chọn size trước khi thêm vào giỏ.</em><% } %>
+        </fieldset>
+      <% } %>
+
+      <label class="qty">
+        <span>Số lượng</span>
+        <input type="number" name="qty" value="1" min="1" max="10" inputmode="numeric">
+      </label>
+
+      <p class="stock-note" data-stock-note><%= stockTotal ? `Còn ${stockTotal} sản phẩm` : 'Tạm hết hàng' %></p>
+      <% if (outOfStock) { %><em class="option-error" role="alert">Lựa chọn này không còn đủ hàng.</em><% } %>
+
+      <div class="detail-actions">
+        <button class="btn btn-dark" type="submit" <%= stockTotal ? '' : 'disabled' %>>Thêm vào giỏ hàng</button>
+        <a class="more" href="/lien-he?sp=<%= product.slug %>">Hỏi tư vấn viên</a>
+        <a class="more" href="/cua-hang">Tìm cửa hàng</a>
+      </div>
+    </form>
+  </div>
+</article>
+
+<% if (pairs.length) { %>
+  <section>
+    <div class="section-head">
+      <h2>Phối cùng</h2>
+    </div>
+    <ul class="grid">
+      <% for (const item of pairs) { %>
+        <%- include('partials/card', { product: item }) %>
+      <% } %>
+    </ul>
+  </section>
+<% } %>
+
+<% if (related.length) { %>
+  <section>
+    <div class="section-head">
+      <h2>Có thể bạn thích</h2>
+      <a class="more" href="/san-pham">Xem tất cả</a>
+    </div>
+    <ul class="grid">
+      <% for (const item of related) { %>
+        <%- include('partials/card', { product: item }) %>
+      <% } %>
+    </ul>
+  </section>
+<% } %>
+
+<%- include('partials/footer') %>

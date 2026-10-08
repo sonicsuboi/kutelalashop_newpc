@@ -1,0 +1,18 @@
+<%- include('head') %>
+
+<h1><%= title %></h1>
+
+<nav class="tabs">
+  <a href="/admin/don-hang" class="<%= status ? '' : 'active' %>">Tất cả</a>
+  <% for (const [key, label] of Object.entries(admin.statuses)) { %>
+    <a href="/admin/don-hang?status=<%= key %>" class="<%= status === key ? 'active' : '' %>"><%= label %> (<%= counts[key] || 0 %>)</a>
+  <% } %>
+</nav>
+
+<% if (orders.length) { %>
+  <%- include('order-rows', { orders }) %>
+<% } else { %>
+  <p class="muted">Không có đơn hàng nào ở mục này.</p>
+<% } %>
+
+<%- include('foot') %>

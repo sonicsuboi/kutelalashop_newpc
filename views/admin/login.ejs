@@ -1,0 +1,18 @@
+<%- include('head', { bare: true }) %>
+
+<h1><%= shopName %> · Quản trị</h1>
+
+<% if (!enabled) { %>
+  <p class="notice">Trang quản trị đang tắt vì chưa đặt mật khẩu. Mở file <code>.env</code> trong thư mục dự án, điền <code>ADMIN_PASSWORD=...</code> rồi khởi động lại server.</p>
+<% } else { %>
+  <form class="card" action="/admin/dang-nhap" method="post">
+    <label class="field">
+      <span>Mật khẩu</span>
+      <input type="password" name="password" autocomplete="current-password" required autofocus>
+    </label>
+    <% if (error) { %><p class="error" role="alert"><%= error %></p><% } %>
+    <button class="btn" type="submit">Đăng nhập</button>
+  </form>
+<% } %>
+
+<%- include('foot') %>

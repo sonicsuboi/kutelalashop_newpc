@@ -1,0 +1,33 @@
+<%- include('head') %>
+
+<div class="section-head">
+  <h1><%= title %></h1>
+  <a class="btn" href="/admin/san-pham/moi">Thêm sản phẩm</a>
+</div>
+
+<form class="inline" action="/admin/san-pham" method="get">
+  <input type="search" name="q" value="<%= q %>" placeholder="Tìm theo tên hoặc mã" aria-label="Tìm sản phẩm">
+  <button class="btn btn-light" type="submit">Tìm</button>
+</form>
+
+<table class="table">
+  <thead>
+    <tr><th>Mã</th><th>Sản phẩm</th><th>Danh mục</th><th class="num">Giá sỉ</th><th class="num">Giá bán</th><th class="num">Ảnh</th><th class="num">Còn</th></tr>
+  </thead>
+  <tbody>
+    <% for (const p of products) { %>
+      <tr>
+        <td><%= p.code || '—' %></td>
+        <td><a href="/admin/san-pham/<%= p.id %>"><b><%= p.name %></b></a></td>
+        <td><%= admin.categories[p.category] || p.category %></td>
+        <td class="num"><%= p.cost === null ? '—' : formatPrice(p.cost) %></td>
+        <td class="num"><%= formatPrice(p.price) %></td>
+        <td class="num <%= p.media_count ? '' : 'warn' %>"><%= p.media_count %></td>
+        <td class="num <%= p.stock_total ? '' : 'warn' %>"><%= p.stock_total || 'Hết' %></td>
+      </tr>
+    <% } %>
+  </tbody>
+</table>
+<% if (!products.length) { %><p class="muted">Không tìm thấy sản phẩm nào.</p><% } %>
+
+<%- include('foot') %>

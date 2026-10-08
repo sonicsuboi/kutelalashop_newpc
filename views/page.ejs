@@ -1,0 +1,26 @@
+<%- include('partials/header') %>
+
+<section class="intro">
+  <h1><%= page.title %></h1>
+  <p><%= page.lead %></p>
+</section>
+
+<div class="doc">
+  <nav class="doc-nav" aria-label="Hỗ trợ">
+    <% for (const [key, item] of Object.entries(supportPages)) { %>
+      <a href="/ho-tro/<%= key %>" class="<%= key === slug ? 'active' : '' %>"><%= item.title %></a>
+    <% } %>
+  </nav>
+  <div class="doc-body">
+    <% page.sections.forEach(([heading, body], i) => { %>
+      <section>
+        <span class="idx">0<%= i + 1 %></span>
+        <h2><%= heading %></h2>
+        <p><%= body %></p>
+      </section>
+    <% }) %>
+    <p class="doc-end">Cần hỗ trợ thêm? <a href="/lien-he">Liên hệ tư vấn viên</a></p>
+  </div>
+</div>
+
+<%- include('partials/footer') %>
