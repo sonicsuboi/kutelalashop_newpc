@@ -1153,34 +1153,12 @@ main {
 }
 .chat-float a:hover { transform: scale(1.08); }
 .chat-float { align-items: flex-end; }
-/* Zalo: viên xanh có chữ "Chat với shop"; trên điện thoại thu lại thành nút tròn cho đỡ che nội dung */
-.chat-float .chat-zalo {
-  gap: 10px;
-  width: auto;
-  height: 48px;
-  padding: 0 20px 0 7px;
-  font-weight: 700;
-  background: #0068ff;
-  border-radius: 24px;
-}
-.chat-zalo span {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  color: #0068ff;
-  font-size: 10px;
-  font-weight: 800;
-  background: #fff;
-  border-radius: 50%;
-}
-.chat-zalo b { font-weight: 700; white-space: nowrap; }
-.chat-float a:hover { transform: scale(1.05); }
+/* Zalo: bong bóng chat trắng trên ô xanh bo góc, giống biểu tượng ứng dụng */
+.chat-float .chat-zalo { width: 56px; height: 56px; border-radius: 16px; }
+.chat-zalo svg { display: block; width: 100%; height: 100%; }
 .chat-messenger { background: #0a7cff; }
 @media (max-width: 560px) {
   .chat-float { right: 12px; bottom: 12px; }
   .chat-float a { width: 46px; height: 46px; }
-  .chat-float .chat-zalo { width: 46px; height: 46px; padding: 0; }
-  .chat-zalo b { display: none; }
+  .chat-float .chat-zalo { width: 48px; height: 48px; border-radius: 14px; }
 }

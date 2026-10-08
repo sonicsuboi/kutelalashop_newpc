@@ -94,7 +94,13 @@
   <%# Nút chat nổi ở góc màn hình: bấm là mở Zalo / Messenger để nhắn cho shop. Chỉ hiện khi đã khai báo link ở trang quản trị. %>
   <% if (site.zalo || site.facebook) { %>
     <div class="chat-float">
-      <% if (site.zalo) { %><a class="chat-zalo" href="<%= site.zalo %>" target="_blank" rel="noopener" aria-label="Nhắn tin cho shop qua Zalo"><span>Zalo</span><b>Chat với shop</b></a><% } %>
+      <% if (site.zalo) { %><a class="chat-zalo" href="<%= site.zalo %>" target="_blank" rel="noopener" aria-label="Nhắn tin cho shop qua Zalo">
+          <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true">
+            <rect width="56" height="56" rx="16" fill="#0068ff"/>
+            <path fill="#fff" d="M28 11c-10.500 0-19 7.200-19 16.100 0 4.900 2.600 9.300 6.700 12.200-.3 2.300-1.300 4.300-2.900 5.900 3.300-.2 6.200-1.300 8.500-3.100 2.100.7 4.300 1.100 6.700 1.100 10.500 0 19-7.200 19-16.100S38.500 11 28 11z"/>
+            <text x="28" y="31.500" text-anchor="middle" font-family="Be Vietnam Pro, Arial, sans-serif" font-size="11" font-weight="800" fill="#0068ff">Zalo</text>
+          </svg>
+        </a><% } %>
       <% if (site.facebook) { %>
         <a class="chat-messenger" href="<%= site.facebook %>" target="_blank" rel="noopener" aria-label="Nhắn tin cho shop qua Messenger">
           <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2C6.4 2 2 6.1 2 11.4c0 3 1.500 5.600 3.800 7.300V22l3.400-1.900c.9.2 1.800.4 2.800.4 5.600 0 10-4.100 10-9.400S17.600 2 12 2zm1 12.600-2.600-2.700-5 2.700 5.500-5.800 2.600 2.700 4.900-2.700-5.400 5.800z"/></svg>
