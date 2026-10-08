@@ -336,23 +336,9 @@ main {
   grid-template-columns: 1fr 1fr;
   gap: 4px;
   max-width: var(--page);
-  margin: 96px auto 0;
+  margin: 96px auto;
   padding: 0 4px;
 }
-.story-text {
-  padding: 88px 72px;
-  color: #fff;
-  background: #0a0a0a center / cover no-repeat;
-}
-.story-text h2 {
-  margin: 14px 0 18px;
-  font-size: clamp(26px, 3vw, 42px);
-  font-weight: 800;
-  line-height: 1.2;
-  text-transform: uppercase;
-}
-.story-text p:not(.eyebrow) { max-width: 420px; color: #cfcfcf; }
-.story-text .btn { margin-top: 32px; }
 .story-art {
   display: flex;
   flex-direction: column;
@@ -361,34 +347,42 @@ main {
   padding: 48px 24px;
   background: var(--tile);
 }
-/* Bản có ảnh cửa hàng làm nền: chữ trắng nằm góc dưới trái trên lớp tối */
+/* Hai ô ảnh cùng một kiểu: ảnh làm nền, lớp tối đậm dần xuống đáy, chữ trắng nằm góc dưới trái */
+.story-text,
 .story-art.has-photo {
   position: relative;
   isolation: isolate;
+  display: flex;
+  flex-direction: column;
   align-items: flex-start;
   justify-content: flex-end;
-  min-height: 360px;
-  padding: 48px var(--gutter) 56px 56px;
+  min-height: clamp(380px, 34vw, 520px);
+  padding: 56px;
   color: #fff;
   background: #0a0a0a center / cover no-repeat;
   overflow: hidden;
 }
+.story-text::before,
 .story-art.has-photo::before {
   content: "";
   position: absolute;
   inset: 0;
   z-index: -1;
-  background: linear-gradient(to top, rgba(0, 0, 0, .78), rgba(0, 0, 0, .2) 70%);
+  background: linear-gradient(to top, rgba(0, 0, 0, .82), rgba(0, 0, 0, .25) 75%);
   transition: background-color .3s ease;
 }
 .story-art.has-photo:hover::before { background-color: rgba(0, 0, 0, .2); }
+.story-text h2,
 .story-art-title {
-  margin: 10px 0 24px;
-  font-size: clamp(22px, 2.4vw, 32px);
+  margin-top: 10px;
+  font-size: clamp(22px, 2.4vw, 34px);
   font-weight: 800;
   line-height: 1.2;
   text-transform: uppercase;
 }
+.story-text p:not(.eyebrow) { max-width: 420px; margin-top: 14px; color: #dcdcdc; }
+.story-text .btn,
+.story-art.has-photo .btn { margin-top: 28px; }
 .story-art svg { width: 62%; height: auto; transition: transform .5s ease; }
 .story-art:hover svg { transform: rotate(6deg) scale(1.04); }
 
@@ -999,7 +993,8 @@ main {
   .doc { gap: 40px; }
   .doc-nav { flex-direction: row; flex-wrap: wrap; gap: 10px 20px; }
   .detail-info { padding: 32px 16px; }
-  .story-text { padding: 56px var(--gutter); }
+  .story-text,
+  .story-art.has-photo { min-height: 340px; padding: 40px var(--gutter); }
   .category-list a { grid-template-columns: 32px 1fr 90px; gap: 14px; }
   .category-list .count { display: none; }
   .principles,
@@ -1024,7 +1019,7 @@ main {
   .card { padding-bottom: 36px; }
   .section-head { padding-top: 56px; }
   .section-head h2 { font-size: 17px; }
-  .story { margin: 56px auto 0; }
+  .story { margin: 56px auto; }
   .assist { grid-template-columns: 1fr; padding: 56px var(--gutter); }
   .cart-lines li { grid-template-columns: 84px 1fr; gap: 16px; }
   .cart-subtotal { grid-column: 2; }
@@ -1157,9 +1152,35 @@ main {
   transition: transform .2s ease;
 }
 .chat-float a:hover { transform: scale(1.08); }
-.chat-zalo { background: #0068ff; }
+.chat-float { align-items: flex-end; }
+/* Zalo: viên xanh có chữ "Chat với shop"; trên điện thoại thu lại thành nút tròn cho đỡ che nội dung */
+.chat-float .chat-zalo {
+  gap: 10px;
+  width: auto;
+  height: 48px;
+  padding: 0 20px 0 7px;
+  font-weight: 700;
+  background: #0068ff;
+  border-radius: 24px;
+}
+.chat-zalo span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  color: #0068ff;
+  font-size: 10px;
+  font-weight: 800;
+  background: #fff;
+  border-radius: 50%;
+}
+.chat-zalo b { font-weight: 700; white-space: nowrap; }
+.chat-float a:hover { transform: scale(1.05); }
 .chat-messenger { background: #0a7cff; }
 @media (max-width: 560px) {
   .chat-float { right: 12px; bottom: 12px; }
   .chat-float a { width: 46px; height: 46px; }
+  .chat-float .chat-zalo { width: 46px; height: 46px; padding: 0; }
+  .chat-zalo b { display: none; }
 }

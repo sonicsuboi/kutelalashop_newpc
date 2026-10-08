@@ -60,8 +60,8 @@
 </section>
 
 <section class="story">
-  <%# Có ảnh story thì phủ một lớp tối lên ảnh để chữ trắng đọc được, không có thì giữ nền đen %>
-  <div class="story-text"<% if (storyImage) { %> style="background-image: linear-gradient(rgba(0, 0, 0, .58), rgba(0, 0, 0, .58)), url('<%= storyImage %>')"<% } %>>
+  <%# Có ảnh story thì dùng làm nền (CSS phủ sẵn lớp tối để chữ trắng đọc được), không có thì giữ nền đen %>
+  <div class="story-text"<% if (storyImage) { %> style="background-image: url('<%= storyImage %>')"<% } %>>
     <p class="eyebrow">Về <%= shopName %></p>
     <h2>Ít chi tiết hơn,<br>nhiều cá tính hơn.</h2>
     <p>Chúng tôi chọn từng đôi giày theo một tiêu chí: bỏ bớt những gì thừa để phần còn lại nổi bật.</p>
