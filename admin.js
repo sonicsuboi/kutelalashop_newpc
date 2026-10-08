@@ -90,22 +90,45 @@ router.use((req, res, next) => (isLoggedIn(req) ? next() : res.redirect('/admin/
 
 // Tổng quan
 router.get('/', (req, res) => {
-  const count = (where) => db.prepare(`SELECT COUNT(*) AS n FROM orders WHERE ${where}`).get().n;
-  const sum = (where) => db.prepare(`SELECT COALESCE(SUM(total), 0) AS n FROM orders WHERE ${where}`).get().n;
+  const one = (sql, ...args) => db.prepare(sql).get(...args).n;
+  // ngày theo giờ Việt Nam (created_at lưu giờ UTC)
+  const VN = "date(created_at, '+7 hours')";
+  const today = "date('now', '+7 hours')";
+  const sold = "status != 'cancelled'";
   const products = db.prepare(PRODUCT_ROWS).all();
+
+  // doanh thu 7 ngày gần nhất, kể cả ngày không có đơn
+  const rows = new Map(db.prepare(`
+    SELECT ${VN} AS day, COALESCE(SUM(total), 0) AS revenue, COUNT(*) AS orders
+    FROM orders WHERE ${sold} AND ${VN} >= date('now', '+7 hours', '-6 days') GROUP BY day`).all().map((r) => [r.day, r]));
+  const week = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(Date.now() + 7 * 3600 * 1000 - i * 86400 * 1000).toISOString().slice(0, 10);
+    const r = rows.get(d) || { revenue: 0, orders: 0 };
+    week.push({ day: d, label: `${d.slice(8, 10)}/${d.slice(5, 7)}`, revenue: r.revenue, orders: r.orders });
+  }
+
   res.render('admin/dashboard', {
     title: 'Tổng quan',
-    stats: {
-      newOrders: count("status = 'new'"),
-      inProgress: count("status IN ('confirmed', 'shipping')"),
-      doneRevenue: sum("status = 'done'"),
-      openRevenue: sum("status IN ('new', 'confirmed', 'shipping')"),
-      products: products.length,
+    todo: {
+      newOrders: one("SELECT COUNT(*) AS n FROM orders WHERE status = 'new'"),
+      shipping: one("SELECT COUNT(*) AS n FROM orders WHERE status IN ('confirmed', 'shipping')"),
+      refund: one("SELECT COUNT(*) AS n FROM orders WHERE status = 'cancelled' AND payment_status = 'paid'"),
       soldOut: products.filter((p) => !p.stock_total).length,
+      noPhoto: products.filter((p) => !p.media_count).length,
+    },
+    stats: {
+      todayRevenue: one(`SELECT COALESCE(SUM(total), 0) AS n FROM orders WHERE ${sold} AND ${VN} = ${today}`),
+      todayOrders: one(`SELECT COUNT(*) AS n FROM orders WHERE ${sold} AND ${VN} = ${today}`),
+      monthRevenue: one(`SELECT COALESCE(SUM(total), 0) AS n FROM orders WHERE ${sold} AND strftime('%Y-%m', created_at, '+7 hours') = strftime('%Y-%m', 'now', '+7 hours')`),
+      monthOrders: one(`SELECT COUNT(*) AS n FROM orders WHERE ${sold} AND strftime('%Y-%m', created_at, '+7 hours') = strftime('%Y-%m', 'now', '+7 hours')`),
+      products: products.length,
       units: products.reduce((n, p) => n + p.stock_total, 0),
     },
-    recent: db.prepare('SELECT * FROM orders ORDER BY id DESC LIMIT 6').all(),
-    lowStock: products.sort((a, b) => a.stock_total - b.stock_total).slice(0, 8),
+    week,
+    weekMax: Math.max(...week.map((d) => d.revenue), 1),
+    recent: db.prepare('SELECT * FROM orders ORDER BY id DESC LIMIT 5').all(),
+    lowStock: products.filter((p) => p.stock_total <= 5).sort((x, y) => x.stock_total - y.stock_total).slice(0, 6),
   });
 });
 
@@ -284,7 +307,7 @@ router.post('/san-pham/:id(\\d+)/mau/:colorId(\\d+)/xoa', (req, res, next) => {
 
 // Tải ảnh / video lên thư mục của sản phẩm. Trình duyệt gửi từng file dạng nhị phân,
 // tên file nằm trong ?ten=..., nên không cần thư viện đọc form nhiều phần.
-const UPLOAD_TYPES = { '.jpg': 'image', '.jpeg': 'image', '.png': 'image', '.webp': 'image', '.mp4': 'video', '.webm': 'video' };
+const UPLOAD_TYPES = { '.jpg': 'image', '.jpeg': 'image', '.png': 'image', '.webp': 'image', '.mp4': 'video', '.webm': 'video', '.mov': 'video' };
 const folderOf = (product) => path.join(__dirname, 'public', 'uploads', product.category, product.code);
 const safeName = (name) => {
   const ext = path.extname(String(name || '')).toLowerCase();
@@ -300,7 +323,7 @@ router.post('/san-pham/:id(\\d+)/tai-len',
     if (!product) return next();
     if (!product.code) return res.status(400).json({ error: 'Sản phẩm chưa có mã nên chưa có thư mục.' });
     let name = safeName(req.query.ten);
-    if (!name) return res.status(400).json({ error: 'Chỉ nhận ảnh .jpg .png .webp hoặc video .mp4 .webm.' });
+    if (!name) return res.status(400).json({ error: 'Chỉ nhận ảnh .jpg .png .webp hoặc video .mp4 .webm .mov.' });
     if (!req.body || !req.body.length) return res.status(400).json({ error: 'File rỗng.' });
     // gắn với màu: thêm tên màu không dấu vào đầu tên file
     const color = colorsOf(product.id).find((c) => c.id === Number(req.query.mau));

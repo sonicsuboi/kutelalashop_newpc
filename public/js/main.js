@@ -95,6 +95,8 @@ document.querySelectorAll('[data-gallery]').forEach((gallery) => {
       // chuyển sang hình khác thì dừng video đang phát
       const video = slide.querySelector('video');
       if (video && i !== current) video.pause();
+      // chuyển tới video thì tự phát (tắt tiếng, khách bật tiếng bằng nút trên video)
+      if (video && i === current) video.play().catch(() => {});
     });
     thumbs.forEach((thumb, i) => thumb.setAttribute('aria-current', String(i === current)));
   }

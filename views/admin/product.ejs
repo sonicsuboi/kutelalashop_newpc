@@ -69,7 +69,7 @@
     <form class="upload" data-upload="/admin/san-pham/<%= product.id %>/tai-len">
       <label class="field">
         <span>Chọn ảnh hoặc video (chọn được nhiều file)</span>
-        <input type="file" multiple accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" required>
+        <input type="file" multiple accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime,.mov" required>
       </label>
       <% if (colors.length) { %>
         <label class="field small">
@@ -83,7 +83,7 @@
       <button class="btn" type="submit">Tải lên</button>
       <p class="muted" data-upload-status></p>
     </form>
-    <p class="muted">Video (.mp4) luôn hiện đầu tiên ở trang chi tiết, sau đó tới ảnh theo tên file; ảnh đầu tiên là ảnh đại diện. Video nên dưới 50 MB để khách tải nhanh.</p>
+    <p class="muted">Video (.mp4, .mov) luôn hiện đầu tiên và tự chạy khi khách mở trang ở trang chi tiết, sau đó tới ảnh theo tên file; ảnh đầu tiên là ảnh đại diện. Video nên dưới 50 MB để khách tải nhanh.</p>
 
     <% if (media.length) { %>
       <ul class="media-list">

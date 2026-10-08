@@ -221,7 +221,8 @@ main {
   background: #c4a585;
 }
 /* Ảnh nền phủ kín cả banner như bản đầu tiên (public/images/hero.jpg). Không phủ lớp tối: chữ dùng bóng nhẹ để đọc rõ. */
-.hero { background: #c4a585 var(--hero-img) center / cover no-repeat; }
+/* canh xuống dưới để luôn thấy đôi giày */
+.hero { background: #c4a585 var(--hero-img) center 80% / cover no-repeat; }
 .hero-copy { text-shadow: 0 1px 10px rgba(0, 0, 0, .3); }
 .hero-word { text-shadow: none; }
 .hero-copy { min-width: 0; max-width: 100%; padding: 24px 40px 24px var(--gutter); }

@@ -1,39 +1,83 @@
 <%- include('head') %>
+<%
+  const todoItems = [
+    { n: todo.newOrders, text: 'đơn mới cần gọi xác nhận', href: '/admin/don-hang?status=new', urgent: true },
+    { n: todo.shipping, text: 'đơn đang chuẩn bị / đang giao', href: '/admin/don-hang?status=shipping' },
+    { n: todo.refund, text: 'đơn đã huỷ cần hoàn tiền cho khách', href: '/admin/don-hang?status=cancelled', urgent: true },
+    { n: todo.soldOut, text: 'mẫu đã hết hàng', href: '/admin/san-pham' },
+    { n: todo.noPhoto, text: 'mẫu chưa có ảnh', href: '/admin/san-pham' },
+  ].filter((t) => t.n > 0);
+%>
 
-<h1><%= title %></h1>
-
-<div class="stats">
-  <a class="stat" href="/admin/don-hang?status=new"><b><%= stats.newOrders %></b><span>Đơn mới chờ xác nhận</span></a>
-  <a class="stat" href="/admin/don-hang"><b><%= stats.inProgress %></b><span>Đơn đang xử lý / đang giao</span></a>
-  <div class="stat"><b><%= formatPrice(stats.openRevenue) %></b><span>Giá trị đơn chưa hoàn tất</span></div>
-  <div class="stat"><b><%= formatPrice(stats.doneRevenue) %></b><span>Doanh thu đơn đã hoàn tất</span></div>
-  <a class="stat" href="/admin/san-pham"><b><%= stats.units %></b><span>Sản phẩm còn trong kho (<%= stats.products %> mẫu)</span></a>
-  <a class="stat" href="/admin/san-pham"><b><%= stats.soldOut %></b><span>Mẫu đã hết hàng</span></a>
+<div class="section-head">
+  <h1>Xin chào 👋</h1>
+  <div class="quick-links">
+    <a class="btn" href="/admin/san-pham/moi">+ Thêm sản phẩm</a>
+    <a class="btn btn-light" href="/admin/don-hang">Xem đơn hàng</a>
+  </div>
 </div>
 
-<section>
-  <div class="section-head"><h2>Đơn hàng gần đây</h2><a href="/admin/don-hang">Xem tất cả</a></div>
-  <% if (recent.length) { %>
-    <%- include('order-rows', { orders: recent }) %>
+<section class="todo">
+  <h2>Việc cần làm</h2>
+  <% if (todoItems.length) { %>
+    <ul>
+      <% for (const t of todoItems) { %>
+        <li><a href="<%= t.href %>" class="<%= t.urgent ? 'urgent' : '' %>"><b><%= t.n %></b> <%= t.text %> <span aria-hidden="true">→</span></a></li>
+      <% } %>
+    </ul>
   <% } else { %>
-    <p class="muted">Chưa có đơn hàng nào.</p>
+    <p class="muted">Không có việc gì đang chờ. 🎉</p>
   <% } %>
 </section>
 
-<section>
-  <div class="section-head"><h2>Mẫu còn ít hàng nhất</h2><a href="/admin/san-pham">Xem kho</a></div>
-  <table class="table">
-    <thead><tr><th>Mã</th><th>Sản phẩm</th><th class="num">Còn</th></tr></thead>
-    <tbody>
-      <% for (const p of lowStock) { %>
-        <tr>
-          <td><%= p.code || '—' %></td>
-          <td><a href="/admin/san-pham/<%= p.id %>"><%= p.name %></a></td>
-          <td class="num <%= p.stock_total ? '' : 'warn' %>"><%= p.stock_total %></td>
-        </tr>
-      <% } %>
-    </tbody>
+<div class="stats">
+  <div class="stat"><span>Hôm nay</span><b><%= formatPrice(stats.todayRevenue) %></b><small><%= stats.todayOrders %> đơn</small></div>
+  <div class="stat"><span>Tháng này</span><b><%= formatPrice(stats.monthRevenue) %></b><small><%= stats.monthOrders %> đơn</small></div>
+  <a class="stat" href="/admin/san-pham"><span>Trong kho</span><b><%= stats.units %> đôi / cái</b><small><%= stats.products %> mẫu</small></a>
+</div>
+
+<section class="card">
+  <h2>Doanh thu 7 ngày gần nhất</h2>
+  <p class="muted small">Tính cả đơn chưa giao, không tính đơn đã huỷ. Rê chuột vào cột để xem số.</p>
+  <div class="chart" role="img" aria-label="Biểu đồ doanh thu 7 ngày gần nhất">
+    <% for (const d of week) { %>
+      <div class="chart-col" tabindex="0">
+        <div class="chart-track"><div class="chart-bar" style="height: <%= d.revenue ? Math.max(3, Math.round(d.revenue / weekMax * 100)) : 0 %>%"></div></div>
+        <span class="chart-tip"><%= formatPrice(d.revenue) %> · <%= d.orders %> đơn</span>
+        <span class="chart-label"><%= d.label %></span>
+      </div>
+    <% } %>
+  </div>
+  <table class="sr-only">
+    <caption>Doanh thu theo ngày</caption>
+    <tr><th>Ngày</th><th>Doanh thu</th><th>Số đơn</th></tr>
+    <% for (const d of week) { %><tr><td><%= d.label %></td><td><%= formatPrice(d.revenue) %></td><td><%= d.orders %></td></tr><% } %>
   </table>
 </section>
+
+<div class="cols">
+  <section>
+    <div class="section-head"><h2>Đơn mới nhất</h2><a href="/admin/don-hang">Xem tất cả</a></div>
+    <% if (recent.length) { %>
+      <%- include('order-rows', { orders: recent }) %>
+    <% } else { %>
+      <p class="muted">Chưa có đơn hàng nào.</p>
+    <% } %>
+  </section>
+  <aside>
+    <section class="card">
+      <h2>Sắp hết hàng</h2>
+      <% if (lowStock.length) { %>
+        <ul class="low">
+          <% for (const p of lowStock) { %>
+            <li><a href="/admin/san-pham/<%= p.id %>"><%= p.name %></a><b class="<%= p.stock_total ? '' : 'warn' %>"><%= p.stock_total ? `còn ${p.stock_total}` : 'hết' %></b></li>
+          <% } %>
+        </ul>
+      <% } else { %>
+        <p class="muted">Mẫu nào cũng còn trên 5.</p>
+      <% } %>
+    </section>
+  </aside>
+</div>
 
 <%- include('foot') %>

@@ -10,14 +10,14 @@
 //   - Thứ tự hiển thị theo tên file (01.jpg, 02.jpg, ...). Ảnh đầu tiên là ảnh đại diện.
 //   - File bắt đầu bằng tên màu không dấu viết liền (nau-1.jpg, den-2.jpg, naubo-1.jpg)
 //     được gắn với màu đó: khách chọn màu thì nhảy tới ảnh của màu.
-//   - Video: .mp4 hoặc .webm. Ở trang chi tiết video luôn hiện đầu tiên, trước các ảnh.
+//   - Video: .mp4, .webm hoặc .mov (video quay bằng iPhone). Ở trang chi tiết video luôn hiện đầu tiên, trước các ảnh.
 const fs = require('node:fs');
 const path = require('node:path');
 const db = require('./db');
 const { fold } = require('./text');
 
 const UPLOADS = path.join(__dirname, 'public', 'uploads');
-const KINDS = { '.jpg': 'image', '.jpeg': 'image', '.png': 'image', '.webp': 'image', '.mp4': 'video', '.webm': 'video' };
+const KINDS = { '.jpg': 'image', '.jpeg': 'image', '.png': 'image', '.webp': 'image', '.mp4': 'video', '.webm': 'video', '.mov': 'video' };
 const kindOf = (file) => KINDS[path.extname(file).toLowerCase()];
 
 // Mã sản phẩm dùng làm tên thư mục nên chỉ nhận chữ, số, gạch ngang, gạch dưới

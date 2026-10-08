@@ -140,3 +140,39 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--ink); outli
 .media-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; margin: 16px 0; padding: 0; list-style: none; }
 .media-list li { font-size: 12px; word-break: break-all; }
 .media-list img, .media-list video { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; background: var(--tile); margin-bottom: 4px; }
+
+/* Tổng quan */
+.small { font-size: 12px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.quick-links { display: flex; gap: 8px; flex-wrap: wrap; }
+.todo { margin: 8px 0 20px; padding: 20px; background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--ink); }
+.todo ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.todo a { display: inline-block; padding: 4px 0; font-size: 15px; text-decoration: none; }
+.todo a:hover { text-decoration: underline; }
+.todo b { display: inline-block; min-width: 32px; padding: 2px 8px; margin-right: 6px; text-align: center; background: var(--tile); border: 1px solid var(--line); }
+.todo a.urgent b { background: var(--accent); border-color: var(--accent); }
+.stat span { display: block; margin-bottom: 4px; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.stat small { display: block; margin-top: 2px; color: var(--muted); }
+.stats + .card { margin-top: 20px; }
+
+/* Biểu đồ cột: một chuỗi số liệu, một màu, đáy cột vuông, đỉnh bo 4px */
+.chart { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; height: 220px; margin-top: 16px; border-bottom: 1px solid var(--line); }
+.chart-col { position: relative; display: flex; flex-direction: column; justify-content: flex-end; outline: none; }
+.chart-track { flex: 1; display: flex; align-items: flex-end; justify-content: center; }
+.chart-bar { width: min(56px, 70%); background: var(--ink); border-radius: 4px 4px 0 0; transition: opacity .15s; }
+.chart-col:hover .chart-bar, .chart-col:focus .chart-bar { opacity: .75; }
+.chart-label { position: absolute; bottom: -22px; left: 0; right: 0; text-align: center; font-size: 12px; color: var(--muted); }
+.chart-tip {
+  position: absolute; bottom: calc(100% - 8px); left: 50%; z-index: 2;
+  padding: 6px 10px; font-size: 12px; white-space: nowrap; color: #fff; background: var(--ink);
+  transform: translateX(-50%); opacity: 0; pointer-events: none; transition: opacity .15s;
+}
+.chart-col:hover .chart-tip, .chart-col:focus .chart-tip { opacity: 1; }
+.card .chart + .sr-only + * { margin-top: 32px; }
+.card:has(.chart) { padding-bottom: 44px; }
+.card:has(.chart) + .cols { margin-top: 28px; }
+.low { margin: 0; padding: 0; list-style: none; }
+.low li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.low li:last-child { border-bottom: 0; }
+.low a { text-decoration: none; }
+.low a:hover { text-decoration: underline; }

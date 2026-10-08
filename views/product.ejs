@@ -18,7 +18,7 @@
       <% views.forEach((view, i) => { %>
         <div class="slide <%= view.cls %><%= i === 0 ? ' active' : '' %>" data-slide data-color="<%= view.color || '' %>">
           <% if (view.kind === 'video') { %>
-            <video src="<%= view.url %>" controls playsinline preload="metadata" aria-label="Video <%= product.name %>"></video>
+            <video src="<%= view.url %>" controls playsinline muted loop preload="metadata" <%= i === 0 ? 'autoplay' : '' %> aria-label="Video <%= product.name %>"></video>
           <% } else if (view.url) { %>
             <img src="<%= view.url %>" alt="<%= product.name %>, hình <%= i + 1 %>" <%= i === 0 ? '' : 'loading="lazy"' %>>
           <% } else { %>
