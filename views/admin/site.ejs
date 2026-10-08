@@ -1,0 +1,43 @@
+<%- include('head') %>
+
+<h1><%= title %></h1>
+
+<% if (saved) { %><p class="notice ok" role="status">Đã lưu.</p><% } %>
+
+<form class="card wide" action="/admin/thong-tin" method="post">
+  <h2>Liên hệ</h2>
+  <p class="muted">Hiện ở chân trang và trang Liên hệ.</p>
+  <label class="field">
+    <span>Tên shop</span>
+    <input type="text" name="name" value="<%= values.name || '' %>" maxlength="60" required>
+    <% if (errors.name) { %><em><%= errors.name %></em><% } %>
+  </label>
+  <div class="row">
+    <label class="field">
+      <span>Email</span>
+      <input type="email" name="email" value="<%= values.email || '' %>" maxlength="120" required>
+      <% if (errors.email) { %><em><%= errors.email %></em><% } %>
+    </label>
+    <label class="field">
+      <span>Điện thoại</span>
+      <input type="text" name="phone" value="<%= values.phone || '' %>" maxlength="30" required>
+      <% if (errors.phone) { %><em><%= errors.phone %></em><% } %>
+    </label>
+  </div>
+  <button class="btn" type="submit">Lưu liên hệ</button>
+</form>
+
+<section class="card wide" id="cua-hang">
+  <h2>Cửa hàng</h2>
+  <p class="muted">Danh sách hiện ở trang Hệ thống cửa hàng. Tên, địa chỉ và tỉnh / thành phố là bắt buộc.</p>
+
+  <% for (const s of stores) { %>
+    <%- include('store-fields', { s, action: `/admin/thong-tin/cua-hang/${s.id}`, submit: 'Lưu' }) %>
+  <% } %>
+  <% if (!stores.length) { %><p class="muted">Chưa có cửa hàng nào.</p><% } %>
+
+  <h2>Thêm cửa hàng</h2>
+  <%- include('store-fields', { s: {}, action: '/admin/thong-tin/cua-hang', submit: 'Thêm cửa hàng' }) %>
+</section>
+
+<%- include('foot') %>

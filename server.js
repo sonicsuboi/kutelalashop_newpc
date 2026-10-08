@@ -3,6 +3,7 @@ const path = require('node:path');
 const express = require('express');
 // config phải nạp trước: nó đọc file .env mà vnpay.js và admin.js cần
 const { SITE } = require('./config');
+const { getSite } = require('./site');
 const db = require('./db');
 const supportPages = require('./content');
 const { fold } = require('./text');
@@ -136,8 +137,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.urlencoded({ extended: false, limit: '50kb' }));
 
 app.use(ah(async (req, res, next) => {
-  res.locals.site = SITE;
-  res.locals.shopName = SITE.name;
+  res.locals.site = await getSite();
+  res.locals.shopName = res.locals.site.name;
   // Chỉ hiện những danh mục đang có sản phẩm
   const counts = {};
   for (const row of await db.query('SELECT category, COUNT(*)::int AS n FROM products GROUP BY category')) {

@@ -10,6 +10,7 @@ const { CATEGORIES, CODE_PREFIXES, nextCode, sizesOf, colorsOf, variantsOf, stoc
 const { ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, orderCode, cancelOrder, markPaid } = require('./orders');
 const { syncProductMedia, prefixOf } = require('./media');
 const storage = require('./storage');
+const { saveSite } = require('./site');
 const ah = require('./async-handler');
 
 const PASSWORD = process.env.ADMIN_PASSWORD || '';
@@ -344,6 +345,71 @@ router.post('/san-pham/:id(\\d+)/xoa-file', ah(async (req, res, next) => {
   if (UPLOAD_TYPES[path.extname(name).toLowerCase()]) await storage.remove([prefixOf(product) + name]);
   await syncProductMedia(await getProduct(product.id));
   res.redirect(`/admin/san-pham/${product.id}#anh`);
+}));
+
+// Thông tin website: liên hệ của shop và danh sách cửa hàng
+async function renderSite(res, { values, errors = {}, status = 200, saved = false } = {}) {
+  res.status(status).render('admin/site', {
+    title: 'Thông tin website',
+    values: values || res.locals.site,
+    stores: await db.query('SELECT * FROM stores ORDER BY id'),
+    errors,
+    saved,
+  });
+}
+
+router.get('/thong-tin', ah(async (req, res) => {
+  await renderSite(res, { saved: req.query.ok === '1' });
+}));
+
+router.post('/thong-tin', ah(async (req, res) => {
+  const values = {
+    name: text(req.body.name).slice(0, 60),
+    email: text(req.body.email).slice(0, 120),
+    phone: text(req.body.phone).slice(0, 30),
+  };
+  const errors = {};
+  if (!values.name) errors.name = 'Vui lòng nhập tên shop.';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) errors.email = 'Email chưa đúng.';
+  if (!/\d/.test(values.phone)) errors.phone = 'Vui lòng nhập số điện thoại.';
+  if (Object.keys(errors).length) return renderSite(res, { values, errors, status: 400 });
+  await saveSite(values);
+  res.redirect('/admin/thong-tin?ok=1');
+}));
+
+// Đọc form một cửa hàng; thiếu tên, địa chỉ hoặc tỉnh thành thì trả về null
+function readStoreForm(body) {
+  const store = {
+    name: text(body.name).slice(0, 100),
+    address: text(body.address).slice(0, 200),
+    city: text(body.city).slice(0, 60),
+    phone: text(body.phone).slice(0, 30) || null,
+    hours: text(body.hours).slice(0, 100) || null,
+  };
+  return store.name && store.address && store.city ? store : null;
+}
+
+router.post('/thong-tin/cua-hang', ah(async (req, res) => {
+  const s = readStoreForm(req.body);
+  if (s) {
+    await db.run('INSERT INTO stores (name, address, city, phone, hours) VALUES (?, ?, ?, ?, ?)',
+      [s.name, s.address, s.city, s.phone, s.hours]);
+  }
+  res.redirect(`/admin/thong-tin${s ? '?ok=1' : ''}#cua-hang`);
+}));
+
+router.post('/thong-tin/cua-hang/:id(\\d+)', ah(async (req, res) => {
+  const s = readStoreForm(req.body);
+  if (s) {
+    await db.run('UPDATE stores SET name = ?, address = ?, city = ?, phone = ?, hours = ? WHERE id = ?',
+      [s.name, s.address, s.city, s.phone, s.hours, Number(req.params.id)]);
+  }
+  res.redirect(`/admin/thong-tin${s ? '?ok=1' : ''}#cua-hang`);
+}));
+
+router.post('/thong-tin/cua-hang/:id(\\d+)/xoa', ah(async (req, res) => {
+  await db.run('DELETE FROM stores WHERE id = ?', [Number(req.params.id)]);
+  res.redirect('/admin/thong-tin?ok=1#cua-hang');
 }));
 
 router.use((req, res) => {

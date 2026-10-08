@@ -1,0 +1,33 @@
+<%# Form một cửa hàng, dùng cho cả sửa và thêm. s: cửa hàng đang có (rỗng khi thêm) %>
+<form class="store" action="<%= action %>" method="post">
+  <div class="row">
+    <label class="field">
+      <span>Tên cửa hàng</span>
+      <input type="text" name="name" value="<%= s.name || '' %>" maxlength="100" required>
+    </label>
+    <label class="field">
+      <span>Tỉnh / thành phố</span>
+      <input type="text" name="city" value="<%= s.city || '' %>" maxlength="60" required>
+    </label>
+  </div>
+  <label class="field">
+    <span>Địa chỉ</span>
+    <input type="text" name="address" value="<%= s.address || '' %>" maxlength="200" required>
+  </label>
+  <div class="row">
+    <label class="field">
+      <span>Điện thoại</span>
+      <input type="text" name="phone" value="<%= s.phone || '' %>" maxlength="30">
+    </label>
+    <label class="field">
+      <span>Giờ mở cửa</span>
+      <input type="text" name="hours" value="<%= s.hours || '' %>" maxlength="100" placeholder="vd: 9:00 – 21:00 hằng ngày">
+    </label>
+  </div>
+  <div class="inline">
+    <button class="btn <%= s.id ? '' : 'btn-light' %>" type="submit"><%= submit %></button>
+    <% if (s.id) { %>
+      <button class="btn btn-danger" type="submit" formaction="<%= action %>/xoa" formnovalidate onclick="return confirm('Xoá cửa hàng này?')">Xoá</button>
+    <% } %>
+  </div>
+</form>

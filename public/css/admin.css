@@ -127,6 +127,8 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--ink); outli
 .colors { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 0 0 16px; padding: 0; list-style: none; }
 .colors li { display: flex; align-items: center; }
 .colors form { margin-left: 10px; color: var(--muted); }
+.store { margin-bottom: 20px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.store:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
 
 @media (max-width: 800px) {
   .bar, main { padding-left: 16px; padding-right: 16px; }

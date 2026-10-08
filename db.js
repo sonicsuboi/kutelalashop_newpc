@@ -165,6 +165,11 @@ async function migrate() {
       PRIMARY KEY (product_id, color_id, size)
     );
 
+    CREATE TABLE IF NOT EXISTS settings (
+      key   TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+
     CREATE UNIQUE INDEX IF NOT EXISTS products_code ON products(code) WHERE code IS NOT NULL;
   `);
 
