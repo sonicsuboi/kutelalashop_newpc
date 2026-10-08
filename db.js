@@ -6,6 +6,9 @@ const { retailPrice } = require('./pricing');
 // tránh bị đổi thành Date object rồi lệch theo timezone của máy chạy Node.
 types.setTypeParser(1114, (v) => v); // timestamp
 types.setTypeParser(1082, (v) => v); // date
+// Cột id là BIGINT, pg mặc định trả về chuỗi. Code so sánh id với số (màu khách chọn,
+// màu trong giỏ hàng) nên đổi về số như SQLite trước đây.
+types.setTypeParser(20, Number); // bigint
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
