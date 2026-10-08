@@ -67,21 +67,61 @@ function refreshFavList() {
   favEmpty.hidden = shown > 0;
 }
 
+// Báo cho máy chủ để shop đếm được số người thích từng sản phẩm
+function reportFavs(ids, on) {
+  if (!ids.length) return Promise.resolve();
+  return fetch('/yeu-thich', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ ids: ids.join(','), on: on ? '1' : '0' }),
+  }).catch(() => {});
+}
+
+// Đổi trạng thái yêu thích của một sản phẩm, trả về trạng thái mới
+function toggleFav(id) {
+  if (favs.has(id)) favs.delete(id);
+  else favs.add(id);
+  try {
+    localStorage.setItem(FAV_KEY, JSON.stringify([...favs]));
+  } catch {}
+  reportFavs([id], favs.has(id));
+  return favs.has(id);
+}
+
+// Các sản phẩm đã thích từ trước khi có tính năng đếm: báo một lần
+try {
+  if (favs.size && !localStorage.getItem('favorites-reported')) {
+    reportFavs([...favs], true).then(() => localStorage.setItem('favorites-reported', '1'));
+  }
+} catch {}
+
 cards.forEach((card) => {
   const id = card.dataset.id;
   const btn = card.querySelector('[data-fav]');
   btn.setAttribute('aria-pressed', String(favs.has(id)));
   btn.addEventListener('click', () => {
-    if (favs.has(id)) favs.delete(id);
-    else favs.add(id);
-    btn.setAttribute('aria-pressed', String(favs.has(id)));
-    try {
-      localStorage.setItem(FAV_KEY, JSON.stringify([...favs]));
-    } catch {}
+    btn.setAttribute('aria-pressed', String(toggleFav(id)));
     refreshFavList();
   });
 });
 refreshFavList();
+
+// Trang chi tiết: nút yêu thích kèm số người thích
+document.querySelectorAll('[data-fav-product]').forEach((btn) => {
+  const id = btn.dataset.favProduct;
+  const count = btn.querySelector('[data-fav-count]');
+  // số máy chủ đưa về đã tính (hoặc chưa tính) khách này, nên chỉ cộng trừ phần chênh
+  const base = Number(count.textContent) - (btn.dataset.counted === '1' ? 1 : 0);
+  const show = () => {
+    btn.setAttribute('aria-pressed', String(favs.has(id)));
+    count.textContent = base + (favs.has(id) ? 1 : 0);
+  };
+  show();
+  btn.addEventListener('click', () => {
+    toggleFav(id);
+    show();
+  });
+});
 
 // Trang chi tiết: bộ hình sản phẩm
 document.querySelectorAll('[data-gallery]').forEach((gallery) => {

@@ -1,0 +1,26 @@
+<%- include('../partials/header') %>
+
+<section class="intro">
+  <h1><%= title %></h1>
+  <p>Đăng nhập để giỏ hàng tự điền thông tin nhận hàng, xem lại đơn đã đặt và đánh giá sản phẩm đã mua.</p>
+</section>
+
+<section class="account">
+  <form class="form" action="/tai-khoan/dang-nhap" method="post">
+    <input type="hidden" name="next" value="<%= next %>">
+    <% if (error) { %><p class="option-error" role="alert"><%= error %></p><% } %>
+    <label class="field">
+      <span>Số điện thoại</span>
+      <input type="tel" name="phone" value="<%= phone %>" maxlength="15" autocomplete="tel" required autofocus>
+    </label>
+    <label class="field">
+      <span>Mật khẩu</span>
+      <input type="password" name="password" maxlength="100" autocomplete="current-password" required>
+    </label>
+    <button class="btn btn-dark" type="submit">Đăng nhập</button>
+  </form>
+  <p class="account-alt">Chưa có tài khoản? <a href="/tai-khoan/dang-ky?next=<%= encodeURIComponent(next) %>">Đăng ký</a></p>
+  <p class="account-alt">Quên mật khẩu? <a href="/lien-he">Liên hệ shop</a> để được đặt lại.</p>
+</section>
+
+<%- include('../partials/footer') %>

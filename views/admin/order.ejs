@@ -36,6 +36,8 @@
         <dt>Địa chỉ</dt><dd><%= order.address %></dd>
         <% if (order.note) { %><dt>Ghi chú</dt><dd><%= order.note %></dd><% } %>
         <dt>Ngày đặt</dt><dd><%= order.created_at %> (giờ UTC)</dd>
+        <dt>Tài khoản</dt><dd><%= order.customer_id ? 'Khách đã đăng nhập' : 'Khách vãng lai' %></dd>
+        <% if (order.source) { %><dt>Đi từ kênh</dt><dd><%= admin.sourceLabel(order.source) %></dd><% } %>
       </dl>
     </section>
 

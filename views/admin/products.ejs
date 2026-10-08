@@ -6,28 +6,57 @@
 </div>
 
 <form class="inline" action="/admin/san-pham" method="get">
-  <input type="search" name="q" value="<%= q %>" placeholder="Tìm theo tên hoặc mã" aria-label="Tìm sản phẩm">
+  <input type="search" name="q" value="<%= q %>" placeholder="Gõ tên hoặc mã để tìm" aria-label="Tìm sản phẩm" list="product-suggest" autocomplete="off" data-filter>
+  <datalist id="product-suggest">
+    <% for (const p of products) { %>
+      <option value="<%= p.name %>"><%= p.code || '' %></option>
+      <% if (p.code) { %><option value="<%= p.code %>"><%= p.name %></option><% } %>
+    <% } %>
+  </datalist>
   <button class="btn btn-light" type="submit">Tìm</button>
 </form>
 
-<table class="table">
-  <thead>
-    <tr><th>Mã</th><th>Sản phẩm</th><th>Danh mục</th><th class="num">Giá sỉ</th><th class="num">Giá bán</th><th class="num">Ảnh</th><th class="num">Còn</th></tr>
-  </thead>
-  <tbody>
-    <% for (const p of products) { %>
-      <tr>
-        <td><%= p.code || '—' %></td>
-        <td><a href="/admin/san-pham/<%= p.id %>"><b><%= p.name %></b></a></td>
-        <td><%= admin.categories[p.category] || p.category %></td>
-        <td class="num"><%= p.cost === null ? '—' : formatPrice(p.cost) %></td>
-        <td class="num"><%= formatPrice(p.price) %></td>
-        <td class="num <%= p.media_count ? '' : 'warn' %>"><%= p.media_count %></td>
-        <td class="num <%= p.stock_total ? '' : 'warn' %>"><%= p.stock_total || 'Hết' %></td>
-      </tr>
-    <% } %>
-  </tbody>
-</table>
-<% if (!products.length) { %><p class="muted">Không tìm thấy sản phẩm nào.</p><% } %>
+<div class="scroll">
+  <table class="table">
+    <thead>
+      <tr><th>Mã</th><th>Sản phẩm</th><th>Danh mục</th><th class="num">Giá sỉ</th><th class="num">Giá bán</th><th class="num">Ảnh</th><th class="num">Còn</th><th class="num">Lượt xem</th><th class="num">Yêu thích</th><th class="num">Đánh giá</th></tr>
+    </thead>
+    <tbody>
+      <% for (const p of products) { %>
+        <tr data-row="<%= `${p.name} ${p.code || ''}` %>">
+          <td><%= p.code || '—' %></td>
+          <td><a href="/admin/san-pham/<%= p.id %>"><b><%= p.name %></b></a></td>
+          <td><%= admin.categories[p.category] || p.category %></td>
+          <td class="num"><%= p.cost === null ? '—' : formatPrice(p.cost) %></td>
+          <td class="num"><%= formatPrice(p.price) %></td>
+          <td class="num <%= p.media_count ? '' : 'warn' %>"><%= p.media_count %></td>
+          <td class="num <%= p.stock_total ? '' : 'warn' %>"><%= p.stock_total || 'Hết' %></td>
+          <td class="num"><%= p.view_count %></td>
+          <td class="num"><%= p.fav_count %></td>
+          <td class="num"><%= p.review_count %></td>
+        </tr>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+<p class="muted" data-no-match <%= products.length ? 'hidden' : '' %>>Không tìm thấy sản phẩm nào.</p>
+
+<script>
+  // Gõ tới đâu lọc danh sách tới đó, không phân biệt dấu và chữ hoa
+  const fold = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();
+  const input = document.querySelector('[data-filter]');
+  const rows = [...document.querySelectorAll('[data-row]')];
+  const noMatch = document.querySelector('[data-no-match]');
+  const apply = () => {
+    const q = fold(input.value.trim());
+    let shown = 0;
+    for (const row of rows) {
+      row.hidden = !fold(row.dataset.row).includes(q);
+      if (!row.hidden) shown++;
+    }
+    noMatch.hidden = shown > 0;
+  };
+  input.addEventListener('input', apply);
+</script>
 
 <%- include('foot') %>

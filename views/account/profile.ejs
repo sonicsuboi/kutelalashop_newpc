@@ -1,0 +1,72 @@
+<%- include('../partials/header') %>
+
+<section class="intro">
+  <h1><%= title %></h1>
+  <p>Xin chào <%= customer.name %>.</p>
+</section>
+
+<section class="account">
+  <% if (saved === 'thong-tin') { %><p class="account-ok" role="status">Đã lưu thông tin.</p><% } %>
+  <% if (saved === 'mat-khau') { %><p class="account-ok" role="status">Đã đổi mật khẩu.</p><% } %>
+
+  <form class="form" action="/tai-khoan" method="post" novalidate>
+    <h2>Thông tin nhận hàng</h2>
+    <label class="field">
+      <span>Họ tên</span>
+      <input type="text" name="name" value="<%= values.name || '' %>" maxlength="100" autocomplete="name" required>
+      <% if (errors.name) { %><em><%= errors.name %></em><% } %>
+    </label>
+    <label class="field">
+      <span>Số điện thoại (dùng để đăng nhập)</span>
+      <input type="tel" value="<%= customer.phone %>" disabled>
+    </label>
+    <label class="field">
+      <span>Địa chỉ nhận hàng</span>
+      <textarea name="address" rows="2" maxlength="300" autocomplete="street-address"><%= values.address || '' %></textarea>
+    </label>
+    <button class="btn btn-dark" type="submit">Lưu thông tin</button>
+  </form>
+
+  <h2>Đơn hàng của bạn</h2>
+  <% if (!orders.length) { %>
+    <p class="account-alt">Bạn chưa có đơn hàng nào đặt bằng tài khoản này. <a href="/san-pham">Xem sản phẩm mới</a></p>
+  <% } else { %>
+    <ul class="account-orders">
+      <% for (const order of orders) { %>
+        <li>
+          <p><b><%= orderCode(order.id) %></b> · <%= statuses[order.status] %> · <%= formatPrice(order.total) %></p>
+          <ul>
+            <% for (const item of order.items) { %>
+              <li>
+                <% if (item.slug) { %><a href="/san-pham/<%= item.slug %>#danh-gia"><%= item.name %></a><% } else { %><%= item.name %><% } %>
+                <span class="muted"><%= [item.color, item.size && `size ${item.size}`, `x${item.qty}`].filter(Boolean).join(' · ') %></span>
+              </li>
+            <% } %>
+          </ul>
+          <% if (order.status === 'done') { %><p class="muted">Đơn đã hoàn tất: bấm vào sản phẩm để viết đánh giá.</p><% } %>
+        </li>
+      <% } %>
+    </ul>
+  <% } %>
+
+  <form class="form" action="/tai-khoan/mat-khau" method="post" novalidate>
+    <h2>Đổi mật khẩu</h2>
+    <label class="field">
+      <span>Mật khẩu hiện tại</span>
+      <input type="password" name="current" maxlength="100" autocomplete="current-password" required>
+      <% if (errors.current) { %><em><%= errors.current %></em><% } %>
+    </label>
+    <label class="field">
+      <span>Mật khẩu mới (từ 6 ký tự)</span>
+      <input type="password" name="password" maxlength="100" autocomplete="new-password" required>
+      <% if (errors.password) { %><em><%= errors.password %></em><% } %>
+    </label>
+    <button class="btn" type="submit">Đổi mật khẩu</button>
+  </form>
+
+  <form action="/tai-khoan/dang-xuat" method="post">
+    <button class="text-btn" type="submit">Đăng xuất</button>
+  </form>
+</section>
+
+<%- include('../partials/footer') %>

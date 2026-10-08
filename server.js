@@ -12,6 +12,8 @@ const { CATEGORIES, sizesOf, colorsOf, stockOf, stockMap } = require('./catalog'
 const { orderCode, orderIdFromCode, OutOfStockError, createOrder, cancelOrder, markPaid } = require('./orders');
 const vnpay = require('./vnpay');
 const admin = require('./admin');
+const customers = require('./customers');
+const { track } = require('./tracking');
 const ah = require('./async-handler');
 
 const app = express();
@@ -101,11 +103,16 @@ async function cartLines(items) {
 
 async function renderCart(req, res, { values = {}, errors = {}, status = 200 } = {}) {
   const lines = await cartLines(readCart(req));
+  const { customer } = res.locals;
   res.status(status).render('cart', {
     title: 'Giỏ hàng',
     lines,
     total: lines.reduce((sum, line) => sum + line.subtotal, 0),
-    values: { name: '', phone: '', address: '', note: '', payment: 'cod', ...values },
+    // khách đã đăng nhập thì điền sẵn thông tin đã lưu
+    values: {
+      name: customer ? customer.name : '', phone: customer ? customer.phone : '',
+      address: (customer && customer.address) || '', note: '', payment: 'cod', ...values,
+    },
     errors,
     maxQty: MAX_QTY,
     cardPayment: vnpay.enabled,
@@ -152,11 +159,18 @@ app.use(ah(async (req, res, next) => {
   res.locals.cartCount = readCart(req).reduce((sum, item) => sum + item.qty, 0);
   res.locals.formatPrice = (vnd) =>
     String(vnd).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' đ';
+  res.locals.customer = await customers.currentCustomer(req);
   next();
 }));
 
 // Trang quản trị: đơn hàng và kho sản phẩm
 app.use('/admin', admin);
+
+// Lượt truy cập và kênh đưa khách tới (không tính trang quản trị)
+app.use(track);
+
+// Tài khoản khách hàng
+app.use('/tai-khoan', customers.router);
 
 // Trang chủ
 app.get('/', ah(async (req, res) => {
@@ -205,6 +219,29 @@ app.get('/san-pham', ah(async (req, res) => {
   });
 }));
 
+// Lượt xem, lượt yêu thích và đánh giá của một sản phẩm, kèm quyền đánh giá của khách đang xem:
+// chỉ khách đã đăng nhập và có đơn hoàn tất chứa sản phẩm này mới được viết đánh giá.
+async function productFeedback(product, customer, visitor) {
+  const count = async (sql, ...args) => (await db.one(sql, args)).n;
+  const reviews = await db.query(`
+    SELECT r.id, r.rating, r.comment, r.created_at, r.customer_id, c.name
+    FROM reviews r JOIN customers c ON c.id = r.customer_id
+    WHERE r.product_id = ? ORDER BY r.id DESC LIMIT 100`, [product.id]);
+  const bought = customer ? await db.query(`
+    SELECT DISTINCT o.status FROM orders o JOIN order_items i ON i.order_id = o.id
+    WHERE o.customer_id = ? AND i.product_id = ? AND o.status != 'cancelled'`, [customer.id, product.id]) : [];
+  return {
+    viewCount: await count('SELECT COUNT(*)::int AS n FROM visits WHERE product_id = ?', product.id),
+    favCount: await count('SELECT COUNT(*)::int AS n FROM favorites WHERE product_id = ?', product.id),
+    isFav: Boolean(await db.one('SELECT 1 FROM favorites WHERE visitor = ? AND product_id = ?', [visitor, product.id])),
+    reviews,
+    rating: reviews.length ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0,
+    myReview: customer ? reviews.find((r) => r.customer_id === customer.id) || null : null,
+    canReview: bought.some((o) => o.status === 'done'),
+    waitingOrder: bought.length > 0 && !bought.some((o) => o.status === 'done'),
+  };
+}
+
 // Chi tiết sản phẩm
 app.get('/san-pham/:slug', ah(async (req, res, next) => {
   const product = await db.one(`${PRODUCTS} WHERE slug = ?`, [req.params.slug]);
@@ -229,9 +266,12 @@ app.get('/san-pham/:slug', ah(async (req, res, next) => {
 
   const colors = await colorsOf(db, product.id);
   const stock = await stockMap(db, product, colors);
+  res.locals.viewedProduct = product.id;
   res.render('product', {
     title: product.name,
     product,
+    ...(await productFeedback(product, res.locals.customer, req.visitor)),
+    reviewError: req.query.loi === 'danh-gia',
     related,
     media,
     pairs,
@@ -262,10 +302,45 @@ app.get('/san-pham/:slug/nhanh', ah(async (req, res, next) => {
   });
 }));
 
+// Khách viết hoặc sửa đánh giá của mình (mỗi khách một đánh giá cho mỗi sản phẩm)
+app.post('/san-pham/:slug/danh-gia', ah(async (req, res, next) => {
+  const product = await db.one('SELECT id, slug FROM products WHERE slug = ?', [req.params.slug]);
+  if (!product) return next();
+  const { customer } = res.locals;
+  if (!customer) return res.redirect(`/tai-khoan/dang-nhap?next=${encodeURIComponent(`/san-pham/${product.slug}#danh-gia`)}`);
+
+  const rating = parseInt(req.body.rating, 10);
+  const comment = formText(req.body.comment).slice(0, 1000);
+  const { canReview } = await productFeedback(product, customer, req.visitor);
+  if (!canReview || !(rating >= 1 && rating <= 5) || !comment) {
+    return res.redirect(`/san-pham/${product.slug}?loi=danh-gia#danh-gia`);
+  }
+  await db.run(`
+    INSERT INTO reviews (product_id, customer_id, rating, comment) VALUES (?, ?, ?, ?)
+    ON CONFLICT (product_id, customer_id) DO UPDATE
+      SET rating = excluded.rating, comment = excluded.comment, created_at = (now() AT TIME ZONE 'utc')
+  `, [product.id, customer.id, rating, comment]);
+  res.redirect(`/san-pham/${product.slug}#danh-gia`);
+}));
+
 // Yêu thích: danh sách lưu trên trình duyệt, trang này trả về mọi sản phẩm rồi JS lọc lại
 app.get('/yeu-thich', ah(async (req, res) => {
   const products = await db.query(`${PRODUCTS} ORDER BY created_at DESC, p.id ASC`);
   res.render('favorites', { title: 'Yêu thích', products });
+}));
+
+// Trình duyệt báo về mỗi lần khách bấm / bỏ yêu thích, để đếm được số người thích từng sản phẩm.
+// ids: danh sách id cách nhau dấu phẩy; on=0 là bỏ thích.
+app.post('/yeu-thich', ah(async (req, res) => {
+  const ids = String(req.body.ids || '').split(',').filter((id) => /^\d{1,9}$/.test(id)).slice(0, 100).map(Number);
+  for (const id of ids) {
+    if (req.body.on === '0') {
+      await db.run('DELETE FROM favorites WHERE visitor = ? AND product_id = ?', [req.visitor, id]);
+    } else if (await db.one('SELECT 1 FROM products WHERE id = ?', [id])) {
+      await db.run('INSERT INTO favorites (visitor, product_id) VALUES (?, ?) ON CONFLICT DO NOTHING', [req.visitor, id]);
+    }
+  }
+  res.json({ ok: true });
 }));
 
 app.get('/gioi-thieu', (req, res) => {
@@ -380,15 +455,21 @@ app.post('/gio-hang/dat-hang', ah(async (req, res) => {
   if (!values.address || values.address.length > 300) errors.address = 'Vui lòng nhập địa chỉ nhận hàng.';
   if (Object.keys(errors).length) return renderCart(req, res, { values, errors, status: 400 });
 
+  const { customer } = res.locals;
   let order;
   try {
-    order = await createOrder(lines, values, values.payment);
+    order = await createOrder(lines, { ...values, customerId: customer && customer.id, source: req.source }, values.payment);
   } catch (err) {
     if (!(err instanceof OutOfStockError)) throw err;
     const stock = err.left
       ? `“${err.line.product.name}” chỉ còn ${err.left} sản phẩm. Vui lòng giảm số lượng.`
       : `“${err.line.product.name}” vừa hết hàng. Vui lòng xoá khỏi giỏ.`;
     return renderCart(req, res, { values, errors: { stock }, status: 409 });
+  }
+
+  // Tài khoản chưa lưu địa chỉ thì lấy luôn địa chỉ của đơn này cho lần sau
+  if (customer && !customer.address) {
+    await db.run('UPDATE customers SET address = ? WHERE id = ?', [values.address, customer.id]);
   }
 
   const code = orderCode(order.id);

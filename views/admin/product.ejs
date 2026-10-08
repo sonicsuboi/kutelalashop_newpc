@@ -105,6 +105,31 @@
   <% } %>
 </section>
 
+<section class="card wide" id="danh-gia">
+  <h2>Đánh giá của khách</h2>
+  <p class="muted"><%= product.view_count %> lượt xem · <%= product.fav_count %> người yêu thích · <%= reviews.length %> đánh giá</p>
+  <% if (reviews.length) { %>
+    <table class="table">
+      <thead><tr><th>Khách</th><th>Sao</th><th>Nhận xét</th><th>Ngày</th><th></th></tr></thead>
+      <tbody>
+        <% for (const r of reviews) { %>
+          <tr>
+            <td><%= r.name %><br><span class="muted"><%= r.phone %></span></td>
+            <td><%= r.rating %>/5</td>
+            <td><%= r.comment %></td>
+            <td><%= r.created_at.slice(8, 10) %>/<%= r.created_at.slice(5, 7) %>/<%= r.created_at.slice(0, 4) %></td>
+            <td>
+              <form action="/admin/san-pham/<%= product.id %>/danh-gia/<%= r.id %>/xoa" method="post" onsubmit="return confirm('Xoá đánh giá này?')">
+                <button class="link" type="submit">Xoá</button>
+              </form>
+            </td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  <% } %>
+</section>
+
 <script>
   // Gửi lần lượt từng file lên máy chủ, xong thì tải lại trang để thấy danh sách mới
   document.querySelectorAll('[data-upload]').forEach((form) => {

@@ -1080,3 +1080,60 @@ main {
 }
 .toast.show { transform: translate(-50%, 0); }
 .toast a { margin-left: 12px; font-weight: 700; color: var(--accent); border-bottom: 1px solid currentColor; }
+
+/* Tài khoản khách hàng */
+.account { max-width: 560px; margin: 0 auto; padding: 16px 24px 96px; }
+.account h2 {
+  margin: 56px 0 24px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.account .form:first-child h2, .account > h2:first-child { margin-top: 0; }
+.account form + form { margin-top: 32px; }
+.account-alt { margin-top: 20px; font-size: 13px; }
+.account-alt a, .checkout-hint a { border-bottom: 1px solid currentColor; }
+.account-ok { margin-bottom: 32px; padding: 14px 20px; background: var(--tile); border-left: 3px solid var(--ink); }
+.account-orders > li { padding: 18px 0; border-top: 1px solid var(--line); }
+.account-orders > li:last-child { border-bottom: 1px solid var(--line); }
+.account-orders ul { margin: 8px 0; }
+.account-orders ul a { border-bottom: 1px solid currentColor; }
+.account-orders .muted { font-size: 12px; }
+.checkout-hint { margin: -12px 0 24px; font-size: 12px; }
+
+/* Lượt xem, yêu thích và đánh giá ở trang chi tiết */
+.detail-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  align-items: center;
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.detail-stats a:hover { color: var(--ink); }
+.stars { color: var(--ink); letter-spacing: 2px; }
+.fav-product { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); }
+.fav-product svg { fill: none; }
+.fav-product[aria-pressed="true"] { color: var(--ink); }
+.fav-product[aria-pressed="true"] svg { fill: currentColor; }
+
+.reviews { padding-bottom: 72px; }
+.reviews-body {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 72px;
+  padding: 0 var(--gutter);
+}
+.review-list li { padding: 20px 0; border-top: 1px solid var(--line); }
+.review-list li:first-child { border-top: 0; padding-top: 0; }
+.review-list p + p { margin-top: 6px; }
+.review-list .muted { font-size: 12px; }
+.reviews h3 { margin-bottom: 20px; font-size: 13px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.rate { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 0 0 24px; padding: 0; border: 0; }
+.rate legend { margin-bottom: 8px; padding: 0; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+
+@media (max-width: 1000px) {
+  .reviews-body { grid-template-columns: 1fr; gap: 40px; }
+}

@@ -11,6 +11,8 @@ const { ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, orderCode, cancelOrder, ma
 const { syncProductMedia, prefixOf } = require('./media');
 const storage = require('./storage');
 const { saveSite } = require('./site');
+const { sourceLabel } = require('./tracking');
+const { hashPassword } = require('./customers');
 const ah = require('./async-handler');
 
 const PASSWORD = process.env.ADMIN_PASSWORD || '';
@@ -44,7 +46,10 @@ function isLocked(ip) {
 const PRODUCT_ROWS = `
   SELECT p.*,
     (SELECT COALESCE(SUM(qty), 0) FROM stock s WHERE s.product_id = p.id)::int AS stock_total,
-    (SELECT COUNT(*) FROM product_images i WHERE i.product_id = p.id)::int AS media_count
+    (SELECT COUNT(*) FROM product_images i WHERE i.product_id = p.id)::int AS media_count,
+    (SELECT COUNT(*) FROM visits v WHERE v.product_id = p.id)::int AS view_count,
+    (SELECT COUNT(*) FROM favorites f WHERE f.product_id = p.id)::int AS fav_count,
+    (SELECT COUNT(*) FROM reviews r WHERE r.product_id = p.id)::int AS review_count
   FROM products p`;
 const getProduct = (id) => db.one(`${PRODUCT_ROWS} WHERE p.id = ?`, [Number(id)]);
 
@@ -52,7 +57,7 @@ router.use((req, res, next) => {
   res.set('Cache-Control', 'no-store');
   res.locals.admin = {
     statuses: ORDER_STATUS, methods: PAYMENT_METHOD, payments: PAYMENT_STATUS,
-    categories: CATEGORIES, codePrefixes: CODE_PREFIXES, orderCode, section: req.path.split('/')[1] || '',
+    categories: CATEGORIES, codePrefixes: CODE_PREFIXES, orderCode, sourceLabel, section: req.path.split('/')[1] || '',
   };
   next();
 });
@@ -129,6 +134,8 @@ router.get('/', ah(async (req, res) => {
       monthOrders: await one(`SELECT COUNT(*)::int AS n FROM orders WHERE ${sold} AND to_char(created_at + interval '7 hours', 'YYYY-MM') = to_char((now() AT TIME ZONE 'utc') + interval '7 hours', 'YYYY-MM')`),
       products: products.length,
       units: products.reduce((n, p) => n + p.stock_total, 0),
+      todayVisitors: await one(`SELECT COUNT(DISTINCT visitor)::int AS n FROM visits WHERE ${VN} = ${today}`),
+      todayViews: await one(`SELECT COUNT(*)::int AS n FROM visits WHERE ${VN} = ${today}`),
     },
     week,
     weekMax: Math.max(...week.map((d) => d.revenue), 1),
@@ -249,6 +256,9 @@ async function renderProduct(res, product, { errors = {}, status = 200, saved = 
     stock: await stockMap(db, product, colors),
     folder: product.code ? prefixOf(product) : '',
     media: await db.query("SELECT url, kind FROM product_images WHERE product_id = ? ORDER BY (kind = 'video') DESC, sort, id", [product.id]),
+    reviews: await db.query(`
+      SELECT r.id, r.rating, r.comment, r.created_at, c.name, c.phone
+      FROM reviews r JOIN customers c ON c.id = r.customer_id WHERE r.product_id = ? ORDER BY r.id DESC`, [product.id]),
     errors,
     saved,
   });
@@ -345,6 +355,87 @@ router.post('/san-pham/:id(\\d+)/xoa-file', ah(async (req, res, next) => {
   if (UPLOAD_TYPES[path.extname(name).toLowerCase()]) await storage.remove([prefixOf(product) + name]);
   await syncProductMedia(await getProduct(product.id));
   res.redirect(`/admin/san-pham/${product.id}#anh`);
+}));
+
+// Xoá một đánh giá không phù hợp
+router.post('/san-pham/:id(\\d+)/danh-gia/:reviewId(\\d+)/xoa', ah(async (req, res) => {
+  await db.run('DELETE FROM reviews WHERE id = ? AND product_id = ?', [Number(req.params.reviewId), Number(req.params.id)]);
+  res.redirect(`/admin/san-pham/${req.params.id}#danh-gia`);
+}));
+
+// Lượt truy cập: bao nhiêu người vào web, đi từ kênh nào, xem sản phẩm nào
+router.get('/truy-cap', ah(async (req, res) => {
+  const days = [1, 7, 30, 90].includes(Number(req.query.ngay)) ? Number(req.query.ngay) : 7;
+  // ngày theo giờ Việt Nam (created_at lưu giờ UTC)
+  const VN = "to_char(created_at + interval '7 hours', 'YYYY-MM-DD')";
+  const since = `${VN} >= to_char((now() AT TIME ZONE 'utc') + interval '7 hours' - interval '${days - 1} days', 'YYYY-MM-DD')`;
+
+  const total = await db.one(`SELECT COUNT(*)::int AS views, COUNT(DISTINCT visitor)::int AS visitors FROM visits WHERE ${since}`);
+  const orderRows = await db.query(`
+    SELECT COALESCE(source, 'truc-tiep') AS source, COUNT(*)::int AS orders, COALESCE(SUM(total), 0)::int AS revenue
+    FROM orders WHERE status != 'cancelled' AND ${since} GROUP BY 1`);
+  const ordersBy = new Map(orderRows.map((r) => [r.source, r]));
+  const sources = (await db.query(`
+    SELECT source, COUNT(DISTINCT visitor)::int AS visitors, COUNT(*)::int AS views
+    FROM visits WHERE ${since} GROUP BY source ORDER BY visitors DESC, views DESC`))
+    .map((s) => ({ ...s, orders: 0, revenue: 0, ...ordersBy.get(s.source) }));
+  // kênh có đơn nhưng không còn lượt xem nào trong khoảng này vẫn phải hiện
+  for (const r of orderRows) {
+    if (!sources.some((s) => s.source === r.source)) sources.push({ visitors: 0, views: 0, ...r });
+  }
+
+  const dayRows = new Map((await db.query(`
+    SELECT ${VN} AS day, COUNT(DISTINCT visitor)::int AS visitors, COUNT(*)::int AS views
+    FROM visits WHERE ${since} GROUP BY day`)).map((r) => [r.day, r]));
+  const chartDays = Math.min(days === 1 ? 7 : days, 30);
+  const chart = [];
+  for (let i = chartDays - 1; i >= 0; i--) {
+    const d = new Date(Date.now() + 7 * 3600 * 1000 - i * 86400 * 1000).toISOString().slice(0, 10);
+    const r = dayRows.get(d) || { visitors: 0, views: 0 };
+    chart.push({ label: `${d.slice(8, 10)}/${d.slice(5, 7)}`, visitors: r.visitors, views: r.views });
+  }
+
+  res.render('admin/visits', {
+    title: 'Truy cập',
+    days,
+    total,
+    orders: orderRows.reduce((n, r) => n + r.orders, 0),
+    customers: (await db.one(`SELECT COUNT(*)::int AS n FROM customers WHERE ${since}`)).n,
+    sources,
+    chart: days === 1 ? [] : chart,
+    chartMax: Math.max(...chart.map((d) => d.visitors), 1),
+    products: await db.query(`
+      SELECT p.id, p.code, p.name, COUNT(*)::int AS views, COUNT(DISTINCT v.visitor)::int AS visitors,
+        (SELECT COUNT(*) FROM favorites f WHERE f.product_id = p.id)::int AS favs
+      FROM visits v JOIN products p ON p.id = v.product_id
+      WHERE ${since.replaceAll('created_at', 'v.created_at')} GROUP BY p.id ORDER BY views DESC LIMIT 15`),
+    pages: await db.query(`
+      SELECT path, COUNT(*)::int AS views, COUNT(DISTINCT visitor)::int AS visitors
+      FROM visits WHERE product_id IS NULL AND ${since} GROUP BY path ORDER BY views DESC LIMIT 10`),
+    referrers: await db.query(`
+      SELECT referrer, COUNT(DISTINCT visitor)::int AS visitors FROM visits
+      WHERE referrer IS NOT NULL AND ${since} GROUP BY referrer ORDER BY visitors DESC LIMIT 10`),
+  });
+}));
+
+// Khách hàng đã đăng ký tài khoản
+router.get('/khach-hang', ah(async (req, res) => {
+  const q = text(req.query.q).slice(0, 80);
+  let customers = await db.query(`
+    SELECT c.id, c.name, c.phone, c.address, c.created_at,
+      (SELECT COUNT(*) FROM orders o WHERE o.customer_id = c.id AND o.status != 'cancelled')::int AS orders,
+      (SELECT COALESCE(SUM(total), 0) FROM orders o WHERE o.customer_id = c.id AND o.status != 'cancelled')::int AS spent
+    FROM customers c ORDER BY c.id DESC LIMIT 500`);
+  if (q) customers = customers.filter((c) => fold(`${c.name} ${c.phone} ${c.address || ''}`).includes(fold(q)));
+  res.render('admin/customers', { title: 'Khách hàng', customers, q, reset: text(req.query.reset) });
+}));
+
+// Khách quên mật khẩu: đặt mật khẩu tạm rồi báo cho khách, khách tự đổi lại sau khi đăng nhập
+router.post('/khach-hang/:id(\\d+)/mat-khau', ah(async (req, res) => {
+  const password = text(req.body.password);
+  if (password.length < 6 || password.length > 100) return res.redirect('/admin/khach-hang?reset=loi');
+  await db.run('UPDATE customers SET password_hash = ? WHERE id = ?', [await hashPassword(password), Number(req.params.id)]);
+  res.redirect('/admin/khach-hang?reset=ok');
 }));
 
 // Thông tin website: liên hệ của shop và danh sách cửa hàng

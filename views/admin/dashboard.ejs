@@ -33,6 +33,7 @@
 <div class="stats">
   <div class="stat"><span>Hôm nay</span><b><%= formatPrice(stats.todayRevenue) %></b><small><%= stats.todayOrders %> đơn</small></div>
   <div class="stat"><span>Tháng này</span><b><%= formatPrice(stats.monthRevenue) %></b><small><%= stats.monthOrders %> đơn</small></div>
+  <a class="stat" href="/admin/truy-cap"><span>Truy cập hôm nay</span><b><%= stats.todayVisitors %> người</b><small><%= stats.todayViews %> lượt xem</small></a>
   <a class="stat" href="/admin/san-pham"><span>Trong kho</span><b><%= stats.units %> đôi / cái</b><small><%= stats.products %> mẫu</small></a>
 </div>
 

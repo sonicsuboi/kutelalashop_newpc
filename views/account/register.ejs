@@ -1,0 +1,35 @@
+<%- include('../partials/header') %>
+
+<section class="intro">
+  <h1><%= title %></h1>
+  <p>Lưu thông tin một lần, những lần đặt hàng sau không phải nhập lại.</p>
+</section>
+
+<section class="account">
+  <form class="form" action="/tai-khoan/dang-ky" method="post" novalidate>
+    <input type="hidden" name="next" value="<%= next %>">
+    <label class="field">
+      <span>Họ tên</span>
+      <input type="text" name="name" value="<%= values.name || '' %>" maxlength="100" autocomplete="name" required>
+      <% if (errors.name) { %><em><%= errors.name %></em><% } %>
+    </label>
+    <label class="field">
+      <span>Số điện thoại</span>
+      <input type="tel" name="phone" value="<%= values.phone || '' %>" maxlength="15" autocomplete="tel" required>
+      <% if (errors.phone) { %><em><%= errors.phone %></em><% } %>
+    </label>
+    <label class="field">
+      <span>Mật khẩu (từ 6 ký tự)</span>
+      <input type="password" name="password" maxlength="100" autocomplete="new-password" required>
+      <% if (errors.password) { %><em><%= errors.password %></em><% } %>
+    </label>
+    <label class="field">
+      <span>Địa chỉ nhận hàng (không bắt buộc)</span>
+      <textarea name="address" rows="2" maxlength="300" autocomplete="street-address"><%= values.address || '' %></textarea>
+    </label>
+    <button class="btn btn-dark" type="submit">Tạo tài khoản</button>
+  </form>
+  <p class="account-alt">Đã có tài khoản? <a href="/tai-khoan/dang-nhap?next=<%= encodeURIComponent(next) %>">Đăng nhập</a></p>
+</section>
+
+<%- include('../partials/footer') %>

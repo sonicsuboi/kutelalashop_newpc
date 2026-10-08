@@ -170,6 +170,49 @@ async function migrate() {
       value TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS customers (
+      id            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      phone         TEXT NOT NULL UNIQUE,
+      name          TEXT NOT NULL,
+      address       TEXT,
+      password_hash TEXT NOT NULL,
+      created_at    TIMESTAMP NOT NULL DEFAULT (now() AT TIME ZONE 'utc')
+    );
+
+    -- Đơn của khách đã đăng nhập, và kênh đưa khách tới web lúc đặt (zalo, facebook, ...)
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_id BIGINT;
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS source TEXT;
+
+    -- Mỗi lượt mở một trang. visitor là mã ngẫu nhiên lưu trong cookie của trình duyệt.
+    CREATE TABLE IF NOT EXISTS visits (
+      id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      visitor    TEXT NOT NULL,
+      path       TEXT NOT NULL,
+      product_id BIGINT,
+      source     TEXT NOT NULL,
+      referrer   TEXT,
+      created_at TIMESTAMP NOT NULL DEFAULT (now() AT TIME ZONE 'utc')
+    );
+    CREATE INDEX IF NOT EXISTS visits_created ON visits(created_at);
+    CREATE INDEX IF NOT EXISTS visits_product ON visits(product_id);
+
+    CREATE TABLE IF NOT EXISTS favorites (
+      visitor    TEXT NOT NULL,
+      product_id BIGINT NOT NULL REFERENCES products(id),
+      created_at TIMESTAMP NOT NULL DEFAULT (now() AT TIME ZONE 'utc'),
+      PRIMARY KEY (visitor, product_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS reviews (
+      id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      product_id  BIGINT NOT NULL REFERENCES products(id),
+      customer_id BIGINT NOT NULL REFERENCES customers(id),
+      rating      INTEGER NOT NULL,
+      comment     TEXT NOT NULL,
+      created_at  TIMESTAMP NOT NULL DEFAULT (now() AT TIME ZONE 'utc'),
+      UNIQUE (product_id, customer_id)
+    );
+
     CREATE UNIQUE INDEX IF NOT EXISTS products_code ON products(code) WHERE code IS NOT NULL;
   `);
 

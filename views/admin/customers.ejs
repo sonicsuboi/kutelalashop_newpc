@@ -1,0 +1,43 @@
+<%- include('head') %>
+
+<h1><%= title %></h1>
+
+<% if (reset === 'ok') { %><p class="notice ok" role="status">Đã đặt mật khẩu mới. Hãy báo mật khẩu này cho khách và nhắc khách đổi lại sau khi đăng nhập.</p><% } %>
+<% if (reset === 'loi') { %><p class="notice" role="alert">Mật khẩu phải từ 6 ký tự trở lên.</p><% } %>
+
+<form class="inline" action="/admin/khach-hang" method="get">
+  <input type="search" name="q" value="<%= q %>" placeholder="Tìm theo tên, số điện thoại, địa chỉ" aria-label="Tìm khách hàng">
+  <button class="btn btn-light" type="submit">Tìm</button>
+</form>
+
+<% if (customers.length) { %>
+  <div class="scroll">
+    <table class="table">
+      <thead>
+        <tr><th>Họ tên</th><th>Điện thoại</th><th>Địa chỉ</th><th class="num">Đơn</th><th class="num">Đã mua</th><th>Đăng ký</th><th>Đặt lại mật khẩu</th></tr>
+      </thead>
+      <tbody>
+        <% for (const c of customers) { %>
+          <tr>
+            <td><b><%= c.name %></b></td>
+            <td><a href="tel:<%= c.phone %>"><%= c.phone %></a></td>
+            <td><%= c.address || '—' %></td>
+            <td class="num"><%= c.orders %></td>
+            <td class="num"><%= c.spent ? formatPrice(c.spent) : '—' %></td>
+            <td><%= c.created_at.slice(8, 10) %>/<%= c.created_at.slice(5, 7) %>/<%= c.created_at.slice(0, 4) %></td>
+            <td>
+              <form class="inline" action="/admin/khach-hang/<%= c.id %>/mat-khau" method="post" onsubmit="return confirm('Đặt mật khẩu mới cho khách này?')">
+                <input type="text" name="password" minlength="6" maxlength="100" placeholder="Mật khẩu tạm" aria-label="Mật khẩu tạm cho <%= c.name %>" required>
+                <button class="btn btn-light" type="submit">Đặt</button>
+              </form>
+            </td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+<% } else { %>
+  <p class="muted"><%= q ? 'Không tìm thấy khách hàng nào.' : 'Chưa có khách hàng nào đăng ký tài khoản.' %></p>
+<% } %>
+
+<%- include('foot') %>

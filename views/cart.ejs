@@ -45,6 +45,9 @@
 
     <form class="form checkout" action="/gio-hang/dat-hang" method="post" novalidate>
       <h2>Thông tin nhận hàng</h2>
+      <% if (!customer) { %>
+        <p class="checkout-hint"><a href="/tai-khoan/dang-nhap?next=%2Fgio-hang">Đăng nhập</a> để tự điền thông tin đã lưu và đánh giá sản phẩm sau khi mua.</p>
+      <% } %>
       <label class="field">
         <span>Họ tên</span>
         <input type="text" name="name" value="<%= values.name %>" maxlength="100" autocomplete="name" required>

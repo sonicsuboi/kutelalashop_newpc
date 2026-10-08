@@ -1,0 +1,107 @@
+<%- include('head') %>
+<% const ranges = { 1: 'Hôm nay', 7: '7 ngày', 30: '30 ngày', 90: '90 ngày' }; %>
+
+<h1><%= title %></h1>
+
+<div class="tabs">
+  <% for (const [n, label] of Object.entries(ranges)) { %>
+    <a href="/admin/truy-cap?ngay=<%= n %>" class="<%= days === Number(n) ? 'active' : '' %>"><%= label %></a>
+  <% } %>
+</div>
+
+<div class="stats">
+  <div class="stat"><span>Người truy cập</span><b><%= total.visitors %></b><small>đếm theo trình duyệt</small></div>
+  <div class="stat"><span>Lượt xem trang</span><b><%= total.views %></b></div>
+  <div class="stat"><span>Đơn hàng</span><b><%= orders %></b><small>không tính đơn đã huỷ</small></div>
+  <a class="stat" href="/admin/khach-hang"><span>Tài khoản mới</span><b><%= customers %></b></a>
+</div>
+
+<% if (chart.length) { %>
+  <section class="card">
+    <h2>Người truy cập theo ngày</h2>
+    <p class="muted small">Rê chuột vào cột để xem số.</p>
+    <div class="chart" style="grid-template-columns: repeat(<%= chart.length %>, 1fr)" role="img" aria-label="Biểu đồ người truy cập theo ngày">
+      <% chart.forEach((d, i) => { %>
+        <div class="chart-col" tabindex="0">
+          <div class="chart-track"><div class="chart-bar" style="height: <%= d.visitors ? Math.max(3, Math.round(d.visitors / chartMax * 100)) : 0 %>%"></div></div>
+          <span class="chart-tip"><%= d.label %>: <%= d.visitors %> người · <%= d.views %> lượt xem</span>
+          <% if (chart.length <= 10 || i % 5 === 0) { %><span class="chart-label"><%= d.label %></span><% } %>
+        </div>
+      <% }) %>
+    </div>
+    <table class="sr-only">
+      <caption>Người truy cập theo ngày</caption>
+      <tr><th>Ngày</th><th>Người</th><th>Lượt xem</th></tr>
+      <% for (const d of chart) { %><tr><td><%= d.label %></td><td><%= d.visitors %></td><td><%= d.views %></td></tr><% } %>
+    </table>
+  </section>
+<% } %>
+
+<section>
+  <h2>Khách đi từ kênh nào</h2>
+  <% if (sources.length) { %>
+    <div class="scroll">
+      <table class="table">
+        <thead><tr><th>Kênh</th><th class="num">Người</th><th class="num">Lượt xem</th><th class="num">Đơn hàng</th><th class="num">Doanh thu</th></tr></thead>
+        <tbody>
+          <% for (const s of sources) { %>
+            <tr>
+              <td><b><%= admin.sourceLabel(s.source) %></b></td>
+              <td class="num"><%= s.visitors %></td>
+              <td class="num"><%= s.views %></td>
+              <td class="num"><%= s.orders || '—' %></td>
+              <td class="num"><%= s.revenue ? formatPrice(s.revenue) : '—' %></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  <% } else { %>
+    <p class="muted">Chưa có lượt truy cập nào trong khoảng này.</p>
+  <% } %>
+  <p class="muted small">Muốn biết chính xác khách tới từ đâu, hãy gửi link có đuôi <code>?nguon=</code>, ví dụ <code>/san-pham?nguon=zalo</code> hay <code>?nguon=nhom-chat-khach-quen</code>. Không có đuôi thì hệ thống tự đoán theo ứng dụng và trang web dẫn tới; khi không đoán được sẽ tính là “Vào trực tiếp”.</p>
+</section>
+
+<div class="cols">
+  <section>
+    <h2>Sản phẩm được xem nhiều</h2>
+    <% if (products.length) { %>
+      <table class="table">
+        <thead><tr><th>Mã</th><th>Sản phẩm</th><th class="num">Lượt xem</th><th class="num">Người xem</th><th class="num">Yêu thích</th></tr></thead>
+        <tbody>
+          <% for (const p of products) { %>
+            <tr>
+              <td><%= p.code || '—' %></td>
+              <td><a href="/admin/san-pham/<%= p.id %>"><%= p.name %></a></td>
+              <td class="num"><%= p.views %></td>
+              <td class="num"><%= p.visitors %></td>
+              <td class="num"><%= p.favs %></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    <% } else { %>
+      <p class="muted">Chưa có sản phẩm nào được xem.</p>
+    <% } %>
+  </section>
+  <aside>
+    <section class="card">
+      <h2>Trang khác được xem</h2>
+      <% if (pages.length) { %>
+        <ul class="low">
+          <% for (const p of pages) { %><li><span><%= p.path %></span><b><%= p.views %></b></li><% } %>
+        </ul>
+      <% } else { %><p class="muted">Chưa có.</p><% } %>
+    </section>
+    <% if (referrers.length) { %>
+      <section class="card">
+        <h2>Trang web dẫn tới</h2>
+        <ul class="low">
+          <% for (const r of referrers) { %><li><span><%= r.referrer %></span><b><%= r.visitors %></b></li><% } %>
+        </ul>
+      </section>
+    <% } %>
+  </aside>
+</div>
+
+<%- include('foot') %>

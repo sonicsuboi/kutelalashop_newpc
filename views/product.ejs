@@ -61,6 +61,19 @@
     <h1><%= product.name %></h1>
     <% if (product.code) { %><p class="detail-code">Mã: <%= product.code %></p><% } %>
     <p class="price"><%= formatPrice(product.price) %></p>
+    <p class="detail-stats">
+      <% if (reviews.length) { %>
+        <a href="#danh-gia"><span class="stars" aria-hidden="true"><%= '★'.repeat(Math.round(rating)) %><%= '☆'.repeat(5 - Math.round(rating)) %></span>
+          <%= rating.toFixed(1).replace('.', ',') %> (<%= reviews.length %> đánh giá)</a>
+      <% } else { %>
+        <a href="#danh-gia">Chưa có đánh giá</a>
+      <% } %>
+      <span><%= viewCount %> lượt xem</span>
+      <button class="fav-product" type="button" data-fav-product="<%= product.id %>" data-counted="<%= isFav ? 1 : 0 %>" aria-pressed="false">
+        <svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.8l2.5 5.3 5.7.7-4.2 4 1.1 5.7L10 14.7l-5.1 2.8L6 11.8l-4.2-4 5.7-.7z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        <span data-fav-count><%= favCount %></span> yêu thích
+      </button>
+    </p>
     <% if (product.description) { %><p class="desc"><%= product.description %></p><% } %>
 
     <form class="buy" action="/gio-hang/them" method="post" data-stock="<%= JSON.stringify(stock) %>">
@@ -109,6 +122,52 @@
     </form>
   </div>
 </article>
+
+<section class="reviews" id="danh-gia">
+  <div class="section-head">
+    <h2>Đánh giá<% if (reviews.length) { %> (<%= reviews.length %>)<% } %></h2>
+  </div>
+  <div class="reviews-body">
+    <div>
+      <% if (!reviews.length) { %><p class="muted">Chưa có đánh giá nào cho sản phẩm này.</p><% } %>
+      <ul class="review-list">
+        <% for (const r of reviews) { %>
+          <li>
+            <p class="stars" aria-label="<%= r.rating %> trên 5 sao"><%= '★'.repeat(r.rating) %><%= '☆'.repeat(5 - r.rating) %></p>
+            <p><%= r.comment %></p>
+            <p class="muted"><%= r.name %> · <%= r.created_at.slice(8, 10) %>/<%= r.created_at.slice(5, 7) %>/<%= r.created_at.slice(0, 4) %> · Đã mua hàng</p>
+          </li>
+        <% } %>
+      </ul>
+    </div>
+
+    <div>
+      <% if (canReview) { %>
+        <form class="form" action="/san-pham/<%= product.slug %>/danh-gia" method="post">
+          <h3><%= myReview ? 'Sửa đánh giá của bạn' : 'Viết đánh giá' %></h3>
+          <% if (reviewError) { %><p class="option-error" role="alert">Vui lòng chọn số sao và viết nhận xét.</p><% } %>
+          <fieldset class="rate">
+            <legend>Số sao</legend>
+            <% for (let n = 5; n >= 1; n--) { %>
+              <label><input type="radio" name="rating" value="<%= n %>" <%= (myReview ? myReview.rating : 5) === n ? 'checked' : '' %> required> <%= n %> ★</label>
+            <% } %>
+          </fieldset>
+          <label class="field">
+            <span>Nhận xét</span>
+            <textarea name="comment" rows="3" maxlength="1000" required><%= myReview ? myReview.comment : '' %></textarea>
+          </label>
+          <button class="btn btn-dark" type="submit"><%= myReview ? 'Lưu đánh giá' : 'Gửi đánh giá' %></button>
+        </form>
+      <% } else if (waitingOrder) { %>
+        <p class="muted">Bạn đã đặt sản phẩm này. Khi đơn hàng hoàn tất, bạn có thể viết đánh giá tại đây.</p>
+      <% } else if (customer) { %>
+        <p class="muted">Chỉ khách đã mua sản phẩm này mới viết được đánh giá.</p>
+      <% } else { %>
+        <p class="muted">Đã mua sản phẩm này? <a class="more" href="/tai-khoan/dang-nhap?next=<%= encodeURIComponent(`/san-pham/${product.slug}#danh-gia`) %>">Đăng nhập để đánh giá</a></p>
+      <% } %>
+    </div>
+  </div>
+</section>
 
 <% if (pairs.length) { %>
   <section>

@@ -24,7 +24,8 @@ class OutOfStockError extends Error {
   }
 }
 
-// lines: kết quả cartLines() ở server.js. Ném OutOfStockError nếu có dòng vượt quá số còn trong kho.
+// lines: kết quả cartLines() ở server.js. customer: thông tin nhận hàng, kèm customerId (khách đã
+// đăng nhập) và source (kênh đưa khách tới web) nếu có. Ném OutOfStockError nếu có dòng vượt quá số còn trong kho.
 async function createOrder(lines, customer, paymentMethod) {
   const total = lines.reduce((sum, line) => sum + line.subtotal, 0);
   return db.withTransaction(async (tx) => {
@@ -33,8 +34,10 @@ async function createOrder(lines, customer, paymentMethod) {
       if (left < line.qty) throw new OutOfStockError(line, left);
     }
     const { id: orderId } = await tx.one(
-      'INSERT INTO orders (name, phone, address, note, total, payment_method) VALUES (?, ?, ?, ?, ?, ?) RETURNING id',
-      [customer.name, customer.phone, customer.address, customer.note, total, paymentMethod],
+      `INSERT INTO orders (name, phone, address, note, total, payment_method, customer_id, source)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+      [customer.name, customer.phone, customer.address, customer.note, total, paymentMethod,
+        customer.customerId || null, customer.source || null],
     );
     for (const line of lines) {
       await tx.run(`
