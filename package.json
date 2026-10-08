@@ -7,13 +7,17 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "kiem-tra-anh": "node tools/kiem-tra-anh.js"
+    "kiem-tra-anh": "node tools/kiem-tra-anh.js",
+    "migrate-uploads": "node tools/migrate-uploads-to-supabase.js"
   },
   "engines": {
     "node": ">=22.13"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.117.3",
     "ejs": "^3.1.10",
-    "express": "^4.21.2"
+    "express": "^4.21.2",
+    "pg": "^8.13.0"
   }
 }

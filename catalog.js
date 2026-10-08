@@ -1,6 +1,4 @@
 // Danh mục, màu, size và tồn kho của sản phẩm: dùng chung cho trang bán hàng và trang quản trị
-const db = require('./db');
-
 const CATEGORIES = {
   sneaker: 'Sneaker',
   'cao-got': 'Giày cao gót',
@@ -20,11 +18,12 @@ const sizesOf = (product) => {
   return sizes;
 };
 
-const colorsOf = (productId) =>
-  db.prepare('SELECT * FROM product_colors WHERE product_id = ? ORDER BY sort, id').all(productId);
+const colorsOf = (db, productId) =>
+  db.query('SELECT * FROM product_colors WHERE product_id = ? ORDER BY sort, id', [productId]);
 
 // Tồn kho tính theo từng biến thể (màu + size). Sản phẩm không có màu dùng màu 0, không có size dùng size 0.
-function variantsOf(product, colors = colorsOf(product.id)) {
+async function variantsOf(db, product, colors) {
+  if (!colors) colors = await colorsOf(db, product.id);
   const colorIds = colors.length ? colors.map((c) => c.id) : [0];
   const sizes = sizesOf(product);
   const variants = [];
@@ -35,32 +34,32 @@ function variantsOf(product, colors = colorsOf(product.id)) {
 }
 
 // { 'màu.size': số lượng còn } của các biến thể đang có
-function stockMap(product, colors) {
-  const rows = db.prepare('SELECT color_id, size, qty FROM stock WHERE product_id = ?').all(product.id);
+async function stockMap(db, product, colors) {
+  const rows = await db.query('SELECT color_id, size, qty FROM stock WHERE product_id = ?', [product.id]);
   const byKey = new Map(rows.map((r) => [`${r.color_id}.${r.size}`, r.qty]));
   const map = {};
-  for (const v of variantsOf(product, colors)) map[`${v.colorId}.${v.size}`] = byKey.get(`${v.colorId}.${v.size}`) || 0;
+  for (const v of await variantsOf(db, product, colors)) map[`${v.colorId}.${v.size}`] = byKey.get(`${v.colorId}.${v.size}`) || 0;
   return map;
 }
 
-function stockOf(productId, colorId, size) {
-  const row = db.prepare('SELECT qty FROM stock WHERE product_id = ? AND color_id = ? AND size = ?').get(productId, colorId, size);
+async function stockOf(db, productId, colorId, size) {
+  const row = await db.one('SELECT qty FROM stock WHERE product_id = ? AND color_id = ? AND size = ?', [productId, colorId, size]);
   return row ? row.qty : 0;
 }
 
-function setStock(productId, colorId, size, qty) {
-  db.prepare(`
+async function setStock(db, productId, colorId, size, qty) {
+  await db.run(`
     INSERT INTO stock (product_id, color_id, size, qty) VALUES (?, ?, ?, ?)
     ON CONFLICT (product_id, color_id, size) DO UPDATE SET qty = excluded.qty
-  `).run(productId, colorId, size, qty);
+  `, [productId, colorId, size, qty]);
 }
 
 // delta âm khi bán, dương khi huỷ đơn trả hàng về kho
-function changeStock(productId, colorId, size, delta) {
-  db.prepare(`
-    INSERT INTO stock (product_id, color_id, size, qty) VALUES (?, ?, ?, MAX(?, 0))
-    ON CONFLICT (product_id, color_id, size) DO UPDATE SET qty = MAX(qty + ?, 0)
-  `).run(productId, colorId, size, delta, delta);
+async function changeStock(db, productId, colorId, size, delta) {
+  await db.run(`
+    INSERT INTO stock (product_id, color_id, size, qty) VALUES (?, ?, ?, GREATEST(?, 0))
+    ON CONFLICT (product_id, color_id, size) DO UPDATE SET qty = GREATEST(stock.qty + ?, 0)
+  `, [productId, colorId, size, delta, delta]);
 }
 
 module.exports = { CATEGORIES, sizesOf, colorsOf, variantsOf, stockMap, stockOf, setStock, changeStock };

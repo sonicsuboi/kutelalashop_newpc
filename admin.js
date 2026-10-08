@@ -1,7 +1,6 @@
 // Trang quản trị (/admin): đơn hàng và kho sản phẩm.
 // Đăng nhập bằng mật khẩu ADMIN_PASSWORD trong file .env; chưa đặt mật khẩu thì trang quản trị tắt.
 const crypto = require('node:crypto');
-const fs = require('node:fs');
 const path = require('node:path');
 const express = require('express');
 const db = require('./db');
@@ -9,7 +8,9 @@ const { fold } = require('./text');
 const { retailPrice } = require('./pricing');
 const { CATEGORIES, sizesOf, colorsOf, variantsOf, stockMap, setStock } = require('./catalog');
 const { ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, orderCode, cancelOrder, markPaid } = require('./orders');
-const { syncProductMedia } = require('./media');
+const { syncProductMedia, prefixOf } = require('./media');
+const storage = require('./storage');
+const ah = require('./async-handler');
 
 const PASSWORD = process.env.ADMIN_PASSWORD || '';
 const SECRET = process.env.SESSION_SECRET || crypto.createHash('sha256').update(`admin:${PASSWORD}`).digest('hex');
@@ -41,10 +42,10 @@ function isLocked(ip) {
 
 const PRODUCT_ROWS = `
   SELECT p.*,
-    (SELECT COALESCE(SUM(qty), 0) FROM stock s WHERE s.product_id = p.id) AS stock_total,
-    (SELECT COUNT(*) FROM product_images i WHERE i.product_id = p.id) AS media_count
+    (SELECT COALESCE(SUM(qty), 0) FROM stock s WHERE s.product_id = p.id)::int AS stock_total,
+    (SELECT COUNT(*) FROM product_images i WHERE i.product_id = p.id)::int AS media_count
   FROM products p`;
-const getProduct = (id) => db.prepare(`${PRODUCT_ROWS} WHERE p.id = ?`).get(Number(id));
+const getProduct = (id) => db.one(`${PRODUCT_ROWS} WHERE p.id = ?`, [Number(id)]);
 
 router.use((req, res, next) => {
   res.set('Cache-Control', 'no-store');
@@ -89,18 +90,21 @@ router.post('/dang-xuat', (req, res) => {
 router.use((req, res, next) => (isLoggedIn(req) ? next() : res.redirect('/admin/dang-nhap')));
 
 // Tổng quan
-router.get('/', (req, res) => {
-  const one = (sql, ...args) => db.prepare(sql).get(...args).n;
-  // ngày theo giờ Việt Nam (created_at lưu giờ UTC)
-  const VN = "date(created_at, '+7 hours')";
-  const today = "date('now', '+7 hours')";
+router.get('/', ah(async (req, res) => {
+  const one = async (sql, ...args) => (await db.one(sql, args)).n;
+  // ngày theo giờ Việt Nam (created_at lưu giờ UTC). Dùng to_char trả về text "YYYY-MM-DD"
+  // thẳng, tránh pg parse ra Date object rồi lệch ngày theo timezone của máy chạy Node.
+  const VN = "to_char(created_at + interval '7 hours', 'YYYY-MM-DD')";
+  const today = "to_char((now() AT TIME ZONE 'utc') + interval '7 hours', 'YYYY-MM-DD')";
   const sold = "status != 'cancelled'";
-  const products = db.prepare(PRODUCT_ROWS).all();
+  const products = await db.query(PRODUCT_ROWS);
 
   // doanh thu 7 ngày gần nhất, kể cả ngày không có đơn
-  const rows = new Map(db.prepare(`
-    SELECT ${VN} AS day, COALESCE(SUM(total), 0) AS revenue, COUNT(*) AS orders
-    FROM orders WHERE ${sold} AND ${VN} >= date('now', '+7 hours', '-6 days') GROUP BY day`).all().map((r) => [r.day, r]));
+  const weekRows = await db.query(`
+    SELECT ${VN} AS day, COALESCE(SUM(total), 0)::int AS revenue, COUNT(*)::int AS orders
+    FROM orders WHERE ${sold} AND ${VN} >= to_char((now() AT TIME ZONE 'utc') + interval '7 hours' - interval '6 days', 'YYYY-MM-DD')
+    GROUP BY day`);
+  const rows = new Map(weekRows.map((r) => [r.day, r]));
   const week = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(Date.now() + 7 * 3600 * 1000 - i * 86400 * 1000).toISOString().slice(0, 10);
@@ -111,82 +115,82 @@ router.get('/', (req, res) => {
   res.render('admin/dashboard', {
     title: 'Tổng quan',
     todo: {
-      newOrders: one("SELECT COUNT(*) AS n FROM orders WHERE status = 'new'"),
-      shipping: one("SELECT COUNT(*) AS n FROM orders WHERE status IN ('confirmed', 'shipping')"),
-      refund: one("SELECT COUNT(*) AS n FROM orders WHERE status = 'cancelled' AND payment_status = 'paid'"),
+      newOrders: await one("SELECT COUNT(*)::int AS n FROM orders WHERE status = 'new'"),
+      shipping: await one("SELECT COUNT(*)::int AS n FROM orders WHERE status IN ('confirmed', 'shipping')"),
+      refund: await one("SELECT COUNT(*)::int AS n FROM orders WHERE status = 'cancelled' AND payment_status = 'paid'"),
       soldOut: products.filter((p) => !p.stock_total).length,
       noPhoto: products.filter((p) => !p.media_count).length,
     },
     stats: {
-      todayRevenue: one(`SELECT COALESCE(SUM(total), 0) AS n FROM orders WHERE ${sold} AND ${VN} = ${today}`),
-      todayOrders: one(`SELECT COUNT(*) AS n FROM orders WHERE ${sold} AND ${VN} = ${today}`),
-      monthRevenue: one(`SELECT COALESCE(SUM(total), 0) AS n FROM orders WHERE ${sold} AND strftime('%Y-%m', created_at, '+7 hours') = strftime('%Y-%m', 'now', '+7 hours')`),
-      monthOrders: one(`SELECT COUNT(*) AS n FROM orders WHERE ${sold} AND strftime('%Y-%m', created_at, '+7 hours') = strftime('%Y-%m', 'now', '+7 hours')`),
+      todayRevenue: await one(`SELECT COALESCE(SUM(total), 0)::int AS n FROM orders WHERE ${sold} AND ${VN} = ${today}`),
+      todayOrders: await one(`SELECT COUNT(*)::int AS n FROM orders WHERE ${sold} AND ${VN} = ${today}`),
+      monthRevenue: await one(`SELECT COALESCE(SUM(total), 0)::int AS n FROM orders WHERE ${sold} AND to_char(created_at + interval '7 hours', 'YYYY-MM') = to_char((now() AT TIME ZONE 'utc') + interval '7 hours', 'YYYY-MM')`),
+      monthOrders: await one(`SELECT COUNT(*)::int AS n FROM orders WHERE ${sold} AND to_char(created_at + interval '7 hours', 'YYYY-MM') = to_char((now() AT TIME ZONE 'utc') + interval '7 hours', 'YYYY-MM')`),
       products: products.length,
       units: products.reduce((n, p) => n + p.stock_total, 0),
     },
     week,
     weekMax: Math.max(...week.map((d) => d.revenue), 1),
-    recent: db.prepare('SELECT * FROM orders ORDER BY id DESC LIMIT 5').all(),
+    recent: await db.query('SELECT * FROM orders ORDER BY id DESC LIMIT 5'),
     lowStock: products.filter((p) => p.stock_total <= 5).sort((x, y) => x.stock_total - y.stock_total).slice(0, 6),
   });
-});
+}));
 
 // Đơn hàng
-router.get('/don-hang', (req, res) => {
+router.get('/don-hang', ah(async (req, res) => {
   const status = Object.hasOwn(ORDER_STATUS, req.query.status) ? req.query.status : '';
   const sql = `
-    SELECT o.*, (SELECT COALESCE(SUM(qty), 0) FROM order_items i WHERE i.order_id = o.id) AS item_count
+    SELECT o.*, (SELECT COALESCE(SUM(qty), 0) FROM order_items i WHERE i.order_id = o.id)::int AS item_count
     FROM orders o ${status ? 'WHERE status = ?' : ''} ORDER BY id DESC LIMIT 300`;
-  const orders = status ? db.prepare(sql).all(status) : db.prepare(sql).all();
+  const orders = status ? await db.query(sql, [status]) : await db.query(sql);
   const counts = Object.fromEntries(
-    db.prepare('SELECT status, COUNT(*) AS n FROM orders GROUP BY status').all().map((r) => [r.status, r.n]));
+    (await db.query('SELECT status, COUNT(*)::int AS n FROM orders GROUP BY status')).map((r) => [r.status, r.n]));
   res.render('admin/orders', { title: 'Đơn hàng', orders, status, counts });
-});
+}));
 
-const getOrder = (id) => db.prepare('SELECT * FROM orders WHERE id = ?').get(Number(id));
+const getOrder = (id) => db.one('SELECT * FROM orders WHERE id = ?', [Number(id)]);
 
-router.get('/don-hang/:id(\\d+)', (req, res, next) => {
-  const order = getOrder(req.params.id);
+router.get('/don-hang/:id(\\d+)', ah(async (req, res, next) => {
+  const order = await getOrder(req.params.id);
   if (!order) return next();
-  const items = db.prepare(`
+  const items = await db.query(`
     SELECT i.*, p.code, p.slug FROM order_items i LEFT JOIN products p ON p.id = i.product_id
-    WHERE i.order_id = ? ORDER BY i.id`).all(order.id);
+    WHERE i.order_id = ? ORDER BY i.id`, [order.id]);
   res.render('admin/order', { title: `Đơn ${orderCode(order.id)}`, order, items });
-});
+}));
 
-router.post('/don-hang/:id(\\d+)/trang-thai', (req, res, next) => {
-  const order = getOrder(req.params.id);
+router.post('/don-hang/:id(\\d+)/trang-thai', ah(async (req, res, next) => {
+  const order = await getOrder(req.params.id);
   if (!order) return next();
   const status = req.body.status;
   // Đơn đã huỷ thì giữ nguyên: hàng đã trả về kho. Huỷ đơn đi qua nút riêng bên dưới.
   if (order.status !== 'cancelled' && Object.hasOwn(ORDER_STATUS, status) && status !== 'cancelled') {
-    db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(status, order.id);
+    await db.run('UPDATE orders SET status = ? WHERE id = ?', [status, order.id]);
   }
   res.redirect(`/admin/don-hang/${order.id}`);
-});
+}));
 
-router.post('/don-hang/:id(\\d+)/huy', (req, res, next) => {
-  const order = getOrder(req.params.id);
+router.post('/don-hang/:id(\\d+)/huy', ah(async (req, res, next) => {
+  const order = await getOrder(req.params.id);
   if (!order) return next();
-  cancelOrder(order.id);
+  await cancelOrder(order.id);
   res.redirect(`/admin/don-hang/${order.id}`);
-});
+}));
 
-router.post('/don-hang/:id(\\d+)/da-thanh-toan', (req, res, next) => {
-  const order = getOrder(req.params.id);
+router.post('/don-hang/:id(\\d+)/da-thanh-toan', ah(async (req, res, next) => {
+  const order = await getOrder(req.params.id);
   if (!order) return next();
-  markPaid(order.id);
+  await markPaid(order.id);
   res.redirect(`/admin/don-hang/${order.id}`);
-});
+}));
 
 // Kho sản phẩm
-router.get('/san-pham', (req, res) => {
+router.get('/san-pham', ah(async (req, res) => {
   const q = text(req.query.q).slice(0, 80);
-  let products = db.prepare(`${PRODUCT_ROWS} ORDER BY p.id DESC`).all();
+  let products = await db.query(`${PRODUCT_ROWS} ORDER BY p.id DESC`);
   if (q) products = products.filter((p) => fold(`${p.name} ${p.code || ''}`).includes(fold(q)));
   res.render('admin/products', { title: 'Kho sản phẩm', products, q });
-});
+}));
 
 // Đọc và kiểm tra các ô chung của form sản phẩm
 function readProductForm(body, category) {
@@ -216,99 +220,96 @@ router.get('/san-pham/moi', (req, res) => {
   res.render('admin/product-new', { title: 'Thêm sản phẩm', values: { has_size: '1', size_min: 35, size_max: 39 }, errors: {} });
 });
 
-router.post('/san-pham/moi', (req, res) => {
+router.post('/san-pham/moi', ah(async (req, res) => {
   const code = text(req.body.code);
   const category = Object.hasOwn(CATEGORIES, req.body.category) ? req.body.category : '';
   const { values, errors } = readProductForm(req.body, category || 'sneaker');
   if (!/^[A-Za-z0-9_-]{2,30}$/.test(code)) errors.code = 'Mã gồm 2–30 ký tự: chữ, số, - hoặc _.';
-  else if (db.prepare('SELECT 1 FROM products WHERE code = ?').get(code)) errors.code = 'Mã này đã có sản phẩm khác dùng.';
+  else if (await db.one('SELECT 1 FROM products WHERE code = ?', [code])) errors.code = 'Mã này đã có sản phẩm khác dùng.';
   if (!category) errors.category = 'Vui lòng chọn danh mục.';
   if (Object.keys(errors).length) {
     return res.status(400).render('admin/product-new', { title: 'Thêm sản phẩm', values: { ...req.body, code }, errors });
   }
 
   const slug = `${fold(values.name).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${code.toLowerCase()}`;
-  const id = Number(db.prepare(`
+  const { id } = await db.one(`
     INSERT INTO products (slug, code, name, category, badge, cost, price, size_min, size_max, description)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(slug, code, values.name, category, values.badge, values.cost, values.price,
-    values.size_min, values.size_max, values.description).lastInsertRowid);
-  syncProductMedia(getProduct(id), { createFolder: true });
+    RETURNING id
+  `, [slug, code, values.name, category, values.badge, values.cost, values.price, values.size_min, values.size_max, values.description]);
   res.redirect(`/admin/san-pham/${id}?ok=1`);
-});
+}));
 
-function renderProduct(res, product, { errors = {}, status = 200, saved = false } = {}) {
-  const colors = colorsOf(product.id);
+async function renderProduct(res, product, { errors = {}, status = 200, saved = false } = {}) {
+  const colors = await colorsOf(db, product.id);
   res.status(status).render('admin/product', {
     title: product.name,
     product,
     colors,
     sizes: sizesOf(product),
-    stock: stockMap(product, colors),
-    folder: product.code ? path.join('public', 'uploads', product.category, product.code) : '',
-    media: db.prepare("SELECT url, kind FROM product_images WHERE product_id = ? ORDER BY (kind = 'video') DESC, sort, id").all(product.id),
+    stock: await stockMap(db, product, colors),
+    folder: product.code ? prefixOf(product) : '',
+    media: await db.query("SELECT url, kind FROM product_images WHERE product_id = ? ORDER BY (kind = 'video') DESC, sort, id", [product.id]),
     errors,
     saved,
   });
 }
 
-router.get('/san-pham/:id(\\d+)', (req, res, next) => {
-  const product = getProduct(req.params.id);
+router.get('/san-pham/:id(\\d+)', ah(async (req, res, next) => {
+  const product = await getProduct(req.params.id);
   if (!product) return next();
-  renderProduct(res, product, { saved: req.query.ok === '1' });
-});
+  await renderProduct(res, product, { saved: req.query.ok === '1' });
+}));
 
 // Lưu thông tin và số lượng tồn kho
-router.post('/san-pham/:id(\\d+)', (req, res, next) => {
-  const product = getProduct(req.params.id);
+router.post('/san-pham/:id(\\d+)', ah(async (req, res, next) => {
+  const product = await getProduct(req.params.id);
   if (!product) return next();
   const { values, errors } = readProductForm(req.body, product.category);
   if (Object.keys(errors).length) {
     return renderProduct(res, { ...product, ...req.body, cost: text(req.body.cost) }, { errors, status: 400 });
   }
-  db.prepare(`
+  await db.run(`
     UPDATE products SET name = ?, badge = ?, description = ?, cost = ?, price = ?, size_min = ?, size_max = ?
     WHERE id = ?
-  `).run(values.name, values.badge, values.description, values.cost, values.price,
-    values.size_min, values.size_max, product.id);
+  `, [values.name, values.badge, values.description, values.cost, values.price, values.size_min, values.size_max, product.id]);
 
-  const updated = getProduct(product.id);
-  for (const v of variantsOf(updated)) {
+  const updated = await getProduct(product.id);
+  for (const v of await variantsOf(db, updated)) {
     const qty = int(req.body[`stock_${v.colorId}_${v.size}`]);
-    if (qty !== null) setStock(updated.id, v.colorId, v.size, Math.min(qty, 9999));
+    if (qty !== null) await setStock(db, updated.id, v.colorId, v.size, Math.min(qty, 9999));
   }
   res.redirect(`/admin/san-pham/${product.id}?ok=1`);
-});
+}));
 
-router.post('/san-pham/:id(\\d+)/mau', (req, res, next) => {
-  const product = getProduct(req.params.id);
+router.post('/san-pham/:id(\\d+)/mau', ah(async (req, res, next) => {
+  const product = await getProduct(req.params.id);
   if (!product) return next();
   const name = text(req.body.name).slice(0, 40);
   const hex = /^#[0-9a-fA-F]{6}$/.test(req.body.hex) ? req.body.hex : '#111111';
   if (name) {
-    const sort = db.prepare('SELECT COUNT(*) AS n FROM product_colors WHERE product_id = ?').get(product.id).n;
+    const sort = (await db.one('SELECT COUNT(*)::int AS n FROM product_colors WHERE product_id = ?', [product.id])).n;
     // Sản phẩm chưa có màu thì tồn kho đang ghi ở "màu 0": bỏ đi, từ giờ tính theo từng màu
-    if (sort === 0) db.prepare('DELETE FROM stock WHERE product_id = ? AND color_id = 0').run(product.id);
-    db.prepare('INSERT INTO product_colors (product_id, name, hex, sole_hex, sort) VALUES (?, ?, ?, ?, ?)')
-      .run(product.id, name, hex, hex, sort);
+    if (sort === 0) await db.run('DELETE FROM stock WHERE product_id = ? AND color_id = 0', [product.id]);
+    await db.run('INSERT INTO product_colors (product_id, name, hex, sole_hex, sort) VALUES (?, ?, ?, ?, ?)',
+      [product.id, name, hex, hex, sort]);
   }
   res.redirect(`/admin/san-pham/${product.id}`);
-});
+}));
 
-router.post('/san-pham/:id(\\d+)/mau/:colorId(\\d+)/xoa', (req, res, next) => {
-  const product = getProduct(req.params.id);
+router.post('/san-pham/:id(\\d+)/mau/:colorId(\\d+)/xoa', ah(async (req, res, next) => {
+  const product = await getProduct(req.params.id);
   if (!product) return next();
   const colorId = Number(req.params.colorId);
-  db.prepare('DELETE FROM product_colors WHERE id = ? AND product_id = ?').run(colorId, product.id);
-  db.prepare('DELETE FROM stock WHERE product_id = ? AND color_id = ?').run(product.id, colorId);
-  db.prepare('UPDATE product_images SET color_id = NULL WHERE product_id = ? AND color_id = ?').run(product.id, colorId);
+  await db.run('DELETE FROM product_colors WHERE id = ? AND product_id = ?', [colorId, product.id]);
+  await db.run('DELETE FROM stock WHERE product_id = ? AND color_id = ?', [product.id, colorId]);
+  await db.run('UPDATE product_images SET color_id = NULL WHERE product_id = ? AND color_id = ?', [product.id, colorId]);
   res.redirect(`/admin/san-pham/${product.id}`);
-});
+}));
 
-// Tải ảnh / video lên thư mục của sản phẩm. Trình duyệt gửi từng file dạng nhị phân,
+// Tải ảnh / video lên bucket Storage của sản phẩm. Trình duyệt gửi từng file dạng nhị phân,
 // tên file nằm trong ?ten=..., nên không cần thư viện đọc form nhiều phần.
 const UPLOAD_TYPES = { '.jpg': 'image', '.jpeg': 'image', '.png': 'image', '.webp': 'image', '.mp4': 'video', '.webm': 'video', '.mov': 'video' };
-const folderOf = (product) => path.join(__dirname, 'public', 'uploads', product.category, product.code);
 const safeName = (name) => {
   const ext = path.extname(String(name || '')).toLowerCase();
   const base = fold(path.basename(String(name || ''), path.extname(String(name || ''))))
@@ -318,35 +319,34 @@ const safeName = (name) => {
 
 router.post('/san-pham/:id(\\d+)/tai-len',
   express.raw({ type: () => true, limit: '300mb' }),
-  (req, res, next) => {
-    const product = getProduct(req.params.id);
+  ah(async (req, res, next) => {
+    const product = await getProduct(req.params.id);
     if (!product) return next();
     if (!product.code) return res.status(400).json({ error: 'Sản phẩm chưa có mã nên chưa có thư mục.' });
     let name = safeName(req.query.ten);
     if (!name) return res.status(400).json({ error: 'Chỉ nhận ảnh .jpg .png .webp hoặc video .mp4 .webm .mov.' });
     if (!req.body || !req.body.length) return res.status(400).json({ error: 'File rỗng.' });
     // gắn với màu: thêm tên màu không dấu vào đầu tên file
-    const color = colorsOf(product.id).find((c) => c.id === Number(req.query.mau));
+    const color = (await colorsOf(db, product.id)).find((c) => c.id === Number(req.query.mau));
     if (color) name = fold(color.name).replace(/\s+/g, '') + '-' + name;
-    const dir = folderOf(product);
-    fs.mkdirSync(dir, { recursive: true });
+    const prefix = prefixOf(product);
     // trùng tên thì thêm số phía sau, không ghi đè file cũ
+    const existing = new Set(await storage.list(prefix));
     let final = name;
-    for (let i = 2; fs.existsSync(path.join(dir, final)); i++) final = name.replace(/(\.[a-z0-9]+)$/, `-${i}$1`);
-    fs.writeFileSync(path.join(dir, final), req.body);
-    syncProductMedia(getProduct(product.id), { createFolder: true });
+    for (let i = 2; existing.has(final); i++) final = name.replace(/(\.[a-z0-9]+)$/, `-${i}$1`);
+    await storage.upload(prefix + final, req.body);
+    await syncProductMedia(await getProduct(product.id));
     res.json({ ok: true, file: final });
-  });
+  }));
 
-router.post('/san-pham/:id(\\d+)/xoa-file', (req, res, next) => {
-  const product = getProduct(req.params.id);
+router.post('/san-pham/:id(\\d+)/xoa-file', ah(async (req, res, next) => {
+  const product = await getProduct(req.params.id);
   if (!product || !product.code) return next();
   const name = path.basename(String(req.body.file || ''));
-  const file = path.join(folderOf(product), name);
-  if (UPLOAD_TYPES[path.extname(name).toLowerCase()] && fs.existsSync(file)) fs.unlinkSync(file);
-  syncProductMedia(getProduct(product.id));
+  if (UPLOAD_TYPES[path.extname(name).toLowerCase()]) await storage.remove([prefixOf(product) + name]);
+  await syncProductMedia(await getProduct(product.id));
   res.redirect(`/admin/san-pham/${product.id}#anh`);
-});
+}));
 
 router.use((req, res) => {
   res.status(404).render('admin/message', { title: 'Không tìm thấy', message: 'Trang quản trị này không tồn tại.' });

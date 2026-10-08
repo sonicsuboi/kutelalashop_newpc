@@ -25,55 +25,46 @@ class OutOfStockError extends Error {
 }
 
 // lines: kết quả cartLines() ở server.js. Ném OutOfStockError nếu có dòng vượt quá số còn trong kho.
-function createOrder(lines, customer, paymentMethod) {
+async function createOrder(lines, customer, paymentMethod) {
   const total = lines.reduce((sum, line) => sum + line.subtotal, 0);
-  db.exec('BEGIN IMMEDIATE');
-  try {
+  return db.withTransaction(async (tx) => {
     for (const line of lines) {
-      const left = stockOf(line.product.id, line.colorId, line.size);
+      const left = await stockOf(tx, line.product.id, line.colorId, line.size);
       if (left < line.qty) throw new OutOfStockError(line, left);
     }
-    const orderId = Number(db
-      .prepare('INSERT INTO orders (name, phone, address, note, total, payment_method) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(customer.name, customer.phone, customer.address, customer.note, total, paymentMethod).lastInsertRowid);
-    const addItem = db.prepare(`
-      INSERT INTO order_items (order_id, product_id, name, color, color_id, size, qty, price)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+    const { id: orderId } = await tx.one(
+      'INSERT INTO orders (name, phone, address, note, total, payment_method) VALUES (?, ?, ?, ?, ?, ?) RETURNING id',
+      [customer.name, customer.phone, customer.address, customer.note, total, paymentMethod],
+    );
     for (const line of lines) {
-      addItem.run(orderId, line.product.id, line.product.name, line.colorName, line.colorId, line.size, line.qty, line.product.price);
-      changeStock(line.product.id, line.colorId, line.size, -line.qty);
+      await tx.run(`
+        INSERT INTO order_items (order_id, product_id, name, color, color_id, size, qty, price)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [orderId, line.product.id, line.product.name, line.colorName, line.colorId, line.size, line.qty, line.product.price]);
+      await changeStock(tx, line.product.id, line.colorId, line.size, -line.qty);
     }
-    db.exec('COMMIT');
     return { id: orderId, total };
-  } catch (err) {
-    db.exec('ROLLBACK');
-    throw err;
-  }
+  });
 }
 
 // Huỷ đơn và trả hàng về kho. Đơn đã huỷ thì không làm gì (không cộng kho hai lần).
-function cancelOrder(orderId, paymentStatus = null) {
-  const order = db.prepare('SELECT status FROM orders WHERE id = ?').get(orderId);
+async function cancelOrder(orderId, paymentStatus = null) {
+  const order = await db.one('SELECT status FROM orders WHERE id = ?', [orderId]);
   if (!order || order.status === 'cancelled') return false;
-  db.exec('BEGIN IMMEDIATE');
-  try {
-    for (const item of db.prepare('SELECT product_id, color_id, size, qty FROM order_items WHERE order_id = ?').all(orderId)) {
-      changeStock(item.product_id, item.color_id, item.size, item.qty);
+  return db.withTransaction(async (tx) => {
+    for (const item of await tx.query('SELECT product_id, color_id, size, qty FROM order_items WHERE order_id = ?', [orderId])) {
+      await changeStock(tx, item.product_id, item.color_id, item.size, item.qty);
     }
-    db.prepare("UPDATE orders SET status = 'cancelled', payment_status = COALESCE(?, payment_status) WHERE id = ?")
-      .run(paymentStatus, orderId);
-    db.exec('COMMIT');
+    await tx.run("UPDATE orders SET status = 'cancelled', payment_status = COALESCE(?, payment_status) WHERE id = ?",
+      [paymentStatus, orderId]);
     return true;
-  } catch (err) {
-    db.exec('ROLLBACK');
-    throw err;
-  }
+  });
 }
 
-function markPaid(orderId, ref = null) {
-  db.prepare(`
-    UPDATE orders SET payment_status = 'paid', payment_ref = COALESCE(?, payment_ref), paid_at = datetime('now')
-    WHERE id = ? AND payment_status != 'paid'`).run(ref, orderId);
+async function markPaid(orderId, ref = null) {
+  await db.run(`
+    UPDATE orders SET payment_status = 'paid', payment_ref = COALESCE(?, payment_ref), paid_at = (now() AT TIME ZONE 'utc')
+    WHERE id = ? AND payment_status != 'paid'`, [ref, orderId]);
 }
 
 module.exports = {
