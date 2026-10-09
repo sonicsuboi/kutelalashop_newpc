@@ -34,13 +34,18 @@
   </label>
   <label class="field small">
     <span>Size nhỏ nhất</span>
-    <input type="number" name="size_min" value="<%= Number(v.size_min) || 35 %>" min="30" max="46">
+    <input type="number" name="size_min" value="<%= v.size_labels ? 35 : (Number(v.size_min) || 35) %>" min="30" max="46">
   </label>
   <label class="field small">
     <span>Size lớn nhất</span>
-    <input type="number" name="size_max" value="<%= Number(v.size_max) || 39 %>" min="30" max="46">
+    <input type="number" name="size_max" value="<%= v.size_labels ? 39 : (Number(v.size_max) || 39) %>" min="30" max="46">
   </label>
 </div>
+<label class="field">
+  <span>Size chữ (cho quần áo)</span>
+  <input type="text" name="size_labels" value="<%= v.size_labels || '' %>" maxlength="120" placeholder="vd: M, L, XL, XXL, 3XL">
+  <small>Điền vào thì sản phẩm dùng các size này thay cho size số ở trên. Cách nhau bằng dấu phẩy. Đừng đổi thứ tự hay xoá bớt sau khi đã nhập tồn kho, vì tồn kho ghi theo vị trí của từng size.</small>
+</label>
 <% if (errors.size) { %><p class="error"><%= errors.size %></p><% } %>
 
 <label class="field">

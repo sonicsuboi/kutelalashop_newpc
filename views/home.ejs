@@ -20,8 +20,8 @@
 <nav class="marquee" aria-label="Danh mục nhanh">
   <div class="marquee-track">
     <% for (let i = 0; i < 2; i++) { const copy = i === 1 ? ' aria-hidden="true" tabindex="-1"' : ''; %>
-      <% for (const [key, label] of Object.entries(categories)) { %>
-        <a href="/san-pham?loai=<%= key %>"<%- copy %>><%= label %></a><span aria-hidden="true">✦</span>
+      <% for (const g of groups) { %>
+        <a href="<%= g.href %>"<%- copy %>><%= g.label %></a><span aria-hidden="true">✦</span>
       <% } %>
       <a href="/san-pham"<%- copy %>>Sản phẩm mới</a><span aria-hidden="true">✦</span>
       <a href="/gioi-thieu"<%- copy %>><%= shopName %></a><span aria-hidden="true">✦</span>

@@ -16,7 +16,7 @@
           <tr>
             <td><%= item.code || '—' %></td>
             <td><% if (item.slug) { %><a href="/admin/san-pham/<%= item.product_id %>"><%= item.name %></a><% } else { %><%= item.name %><% } %></td>
-            <td><%= [item.color, item.size && `Size ${item.size}`].filter(Boolean).join(' · ') || '—' %></td>
+            <td><%= [item.color, item.size && `Size ${item.size_label || item.size}`].filter(Boolean).join(' · ') || '—' %></td>
             <td class="num"><%= item.qty %></td>
             <td class="num"><%= formatPrice(item.price) %></td>
             <td class="num"><%= formatPrice(item.price * item.qty) %></td>

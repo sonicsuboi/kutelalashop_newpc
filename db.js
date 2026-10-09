@@ -227,6 +227,10 @@ async function migrate() {
     );
     CREATE INDEX IF NOT EXISTS searches_created ON searches(created_at);
 
+    -- Size chữ của quần áo (vd "M,L,XL"); để trống là size số như giày. Đơn hàng lưu lại tên size lúc đặt.
+    ALTER TABLE products ADD COLUMN IF NOT EXISTS size_labels TEXT;
+    ALTER TABLE order_items ADD COLUMN IF NOT EXISTS size_label TEXT;
+
     CREATE UNIQUE INDEX IF NOT EXISTS products_code ON products(code) WHERE code IS NOT NULL;
   `);
 

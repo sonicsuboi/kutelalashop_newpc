@@ -8,7 +8,18 @@ const CATEGORIES = {
   dep: 'Dép',
   kinh: 'Kính mát',
   tui: 'Túi xách',
+  'be-trai': 'Đồ bé trai',
+  'be-gai': 'Đồ bé gái',
 };
+
+// Nhóm hàng: cấp trên của danh mục, dùng cho menu và bộ lọc. Thêm danh mục mới thì ghi vào đúng nhóm ở đây.
+const GROUPS = {
+  'giay-dep': { label: 'Giày dép', categories: ['sneaker', 'cao-got', 'sandal', 'bup-be', 'boot', 'dep'] },
+  'tui-xach': { label: 'Túi xách', categories: ['tui'] },
+  'phu-kien': { label: 'Kính & phụ kiện', categories: ['kinh'] },
+  'tre-em': { label: 'Trẻ em', categories: ['be-trai', 'be-gai'] },
+};
+const groupOf = (category) => Object.keys(GROUPS).find((key) => GROUPS[key].categories.includes(category)) || '';
 
 // Mã sản phẩm: KL + chữ danh mục + số thứ tự 3 chữ số, vd: KLCG001, KLSN012
 const CODE_PREFIXES = {
@@ -20,6 +31,8 @@ const CODE_PREFIXES = {
   dep: 'KLDP',
   kinh: 'KLKM',
   tui: 'KLTX',
+  'be-trai': 'KLTT',
+  'be-gai': 'KLTG',
 };
 
 // Mã kế tiếp của danh mục: số lớn nhất đang có cộng 1
@@ -30,9 +43,17 @@ async function nextCode(db, category) {
   return prefix + String(Math.max(0, ...used) + 1).padStart(3, '0');
 }
 
+// Quần áo dùng size chữ (M, L, XL...): tên các size nằm trong cột size_labels, cách nhau dấu phẩy,
+// còn tồn kho, giỏ hàng và đơn hàng vẫn ghi size bằng số thứ tự 1, 2, 3... của tên đó.
+const sizeLabelsOf = (product) => (product.size_labels ? product.size_labels.split(',') : null);
+// Chữ hiện cho khách của một size: tên size chữ nếu có, không thì chính con số (size giày)
+const sizeLabel = (product, size) => (sizeLabelsOf(product) || [])[size - 1] || String(size);
+
 // Sản phẩm không có size (kính, túi) để size_max = 0 và trả về danh sách rỗng
 const sizesOf = (product) => {
   const sizes = [];
+  const labels = sizeLabelsOf(product);
+  if (labels) return labels.map((label, i) => i + 1);
   if (!product.size_max) return sizes;
   for (let s = product.size_min; s <= product.size_max; s++) sizes.push(s);
   return sizes;
@@ -82,4 +103,4 @@ async function changeStock(db, productId, colorId, size, delta) {
   `, [productId, colorId, size, delta, delta]);
 }
 
-module.exports = { CATEGORIES, CODE_PREFIXES, nextCode, sizesOf, colorsOf, variantsOf, stockMap, stockOf, setStock, changeStock };
+module.exports = { CATEGORIES, GROUPS, groupOf, CODE_PREFIXES, nextCode, sizesOf, sizeLabel, colorsOf, variantsOf, stockMap, stockOf, setStock, changeStock };

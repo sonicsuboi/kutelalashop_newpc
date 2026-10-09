@@ -41,9 +41,9 @@ async function createOrder(lines, customer, paymentMethod) {
     );
     for (const line of lines) {
       await tx.run(`
-        INSERT INTO order_items (order_id, product_id, name, color, color_id, size, qty, price)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [orderId, line.product.id, line.product.name, line.colorName, line.colorId, line.size, line.qty, line.product.price]);
+        INSERT INTO order_items (order_id, product_id, name, color, color_id, size, size_label, qty, price)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [orderId, line.product.id, line.product.name, line.colorName, line.colorId, line.size, line.sizeLabel || null, line.qty, line.product.price]);
       await changeStock(tx, line.product.id, line.colorId, line.size, -line.qty);
     }
     return { id: orderId, total };

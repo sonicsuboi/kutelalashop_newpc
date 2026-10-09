@@ -26,7 +26,7 @@
         <p><b><%= statuses[order.status] %></b> · <%= payments[order.payment_status] %> · <%= formatPrice(order.total) %></p>
         <ul>
           <% for (const item of order.items) { %>
-            <li><%= item.name %> <span class="muted"><%= [item.color, item.size && `size ${item.size}`, `x${item.qty}`].filter(Boolean).join(' · ') %></span></li>
+            <li><%= item.name %> <span class="muted"><%= [item.color, item.size && `size ${item.size_label || item.size}`, `x${item.qty}`].filter(Boolean).join(' · ') %></span></li>
           <% } %>
         </ul>
         <p class="muted">Giao tới: <%= order.address %></p>

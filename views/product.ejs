@@ -57,7 +57,8 @@
   </div>
 
   <div class="detail-info">
-    <p class="crumb"><a href="/san-pham">Sản phẩm mới</a> / <a href="/san-pham?loai=<%= product.category %>"><%= categories[product.category] %></a></p>
+    <% const crumbGroup = groups.find((g) => g.categories.length > 1 && g.categories.some((c) => c.key === product.category)); %>
+    <p class="crumb"><a href="/san-pham">Sản phẩm mới</a> / <% if (crumbGroup) { %><a href="<%= crumbGroup.href %>"><%= crumbGroup.label %></a> / <% } %><a href="/san-pham?loai=<%= product.category %>"><%= categories[product.category] %></a></p>
     <h1><%= product.name %></h1>
     <% if (product.code) { %><p class="detail-code">Mã: <%= product.code %></p><% } %>
     <p class="price"><%= formatPrice(product.price) %></p>
@@ -99,7 +100,7 @@
           <% for (const size of sizes) { %>
             <label class="size">
               <input type="radio" name="size" value="<%= size %>" required>
-              <span><%= size %></span>
+              <span><%= sizeLabel(product, size) %></span>
             </label>
           <% } %>
           <% if (needSize) { %><em class="option-error" role="alert">Vui lòng chọn size trước khi thêm vào giỏ.</em><% } %>

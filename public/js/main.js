@@ -252,8 +252,8 @@ if (quick && quick.showModal) {
     const sizes = $('[data-quick-sizes]');
     sizes.hidden = !data.sizes.length;
     sizes.querySelectorAll('label').forEach((l) => l.remove());
-    data.sizes.forEach((s) => sizes.insertAdjacentHTML('beforeend',
-      '<label class="size"><input type="radio" name="size" value="' + s + '" required><span>' + s + '</span></label>'));
+    data.sizes.forEach((s, i) => sizes.insertAdjacentHTML('beforeend',
+      '<label class="size"><input type="radio" name="size" value="' + s + '" required><span>' + esc(data.sizeLabels[i]) + '</span></label>'));
     refresh();
     quick.showModal();
   };

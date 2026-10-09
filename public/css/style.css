@@ -330,14 +330,11 @@ main {
 .category-list a:hover .art svg { transform: rotate(-8deg) scale(1.08); }
 
 /* Trang chủ: câu chuyện */
-/* Nằm gọn trong cùng khung với lưới sản phẩm (.grid), không tràn hết chiều ngang màn hình */
+/* Hai ô tràn hết chiều ngang màn hình, sát nhau */
 .story {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  max-width: var(--page);
-  margin: 96px auto;
-  padding: 0 4px;
+  margin-top: 96px;
 }
 .story-art {
   display: flex;
@@ -357,7 +354,7 @@ main {
   align-items: flex-start;
   justify-content: flex-end;
   min-height: clamp(380px, 34vw, 520px);
-  padding: 56px;
+  padding: 56px 56px 56px var(--gutter);
   color: #fff;
   background: #0a0a0a center / cover no-repeat;
   overflow: hidden;
@@ -620,7 +617,8 @@ main {
   line-height: 1.35;
 }
 .detail-info .price { font-size: 13px; margin-top: 18px; }
-.desc { margin-top: 26px; }
+/* pre-line: giữ các dòng xuống hàng trong mô tả (vd bảng size) */
+.desc { margin-top: 26px; white-space: pre-line; }
 .detail-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1019,7 +1017,7 @@ main {
   .card { padding-bottom: 36px; }
   .section-head { padding-top: 56px; }
   .section-head h2 { font-size: 17px; }
-  .story { margin: 56px auto; }
+  .story { margin-top: 56px; }
   .assist { grid-template-columns: 1fr; padding: 56px var(--gutter); }
   .cart-lines li { grid-template-columns: 84px 1fr; gap: 16px; }
   .cart-subtotal { grid-column: 2; }

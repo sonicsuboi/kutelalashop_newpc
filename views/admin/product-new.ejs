@@ -9,8 +9,12 @@
       <span>Danh mục</span>
       <select name="category" required>
         <option value="">Chọn danh mục</option>
-        <% for (const [key, label] of Object.entries(admin.categories)) { %>
-          <option value="<%= key %>" <%= values.category === key ? 'selected' : '' %>><%= label %> (<%= admin.codePrefixes[key] %>)</option>
+        <% for (const group of Object.values(admin.groups)) { %>
+          <optgroup label="<%= group.label %>">
+            <% for (const key of group.categories) { %>
+              <option value="<%= key %>" <%= values.category === key ? 'selected' : '' %>><%= admin.categories[key] %> (<%= admin.codePrefixes[key] %>)</option>
+            <% } %>
+          </optgroup>
         <% } %>
       </select>
       <small>Không đổi được sau khi tạo. Mã sản phẩm tự sinh theo danh mục, vd: KLCG001.</small>

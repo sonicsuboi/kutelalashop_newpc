@@ -8,7 +8,7 @@ const db = require('./db');
 const supportPages = require('./content');
 const { fold } = require('./text');
 const { syncAllMedia, syncProductMedia } = require('./media');
-const { CATEGORIES, sizesOf, colorsOf, stockOf, stockMap } = require('./catalog');
+const { CATEGORIES, GROUPS, groupOf, sizesOf, sizeLabel, colorsOf, stockOf, stockMap } = require('./catalog');
 const {
   ORDER_STATUS, PAYMENT_STATUS, orderCode, orderIdFromCode, OutOfStockError, createOrder, cancelOrder, markPaid,
 } = require('./orders');
@@ -100,6 +100,7 @@ async function cartLines(items) {
       colorId,
       colorName: color ? color.name : '',
       size: item.size,
+      sizeLabel: item.size ? sizeLabel(product, item.size) : '',
       qty: item.qty,
       left: await stockOf(db, product.id, colorId, item.size),
       subtotal: product.price * item.qty,
@@ -161,11 +162,23 @@ app.use(ah(async (req, res, next) => {
   res.locals.categoryCounts = counts;
   res.locals.categories = Object.fromEntries(
     Object.entries(CATEGORIES).filter(([key]) => counts[key]));
+  // Nhóm hàng đang có sản phẩm, kèm các danh mục con. Nhóm chỉ có một danh mục thì link thẳng tới danh mục đó.
+  res.locals.groups = Object.entries(GROUPS).map(([key, group]) => {
+    const cats = group.categories.filter((c) => counts[c]).map((c) => ({ key: c, label: CATEGORIES[c], count: counts[c] }));
+    return {
+      key,
+      label: group.label,
+      categories: cats,
+      count: cats.reduce((n, c) => n + c.count, 0),
+      href: cats.length === 1 ? `/san-pham?loai=${cats[0].key}` : `/san-pham?nhom=${key}`,
+    };
+  }).filter((group) => group.count);
   res.locals.supportPages = supportPages;
   res.locals.current = { q: '' };
   res.locals.cartCount = readCart(req).reduce((sum, item) => sum + item.qty, 0);
   res.locals.formatPrice = (vnd) =>
     String(vnd).replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' đ';
+  res.locals.sizeLabel = sizeLabel;
   res.locals.customer = await customers.currentCustomer(req);
   // Thẻ SEO ở đầu trang (views/partials/header.ejs). Từng route ghi đè phần cần khác đi.
   const base = baseUrl(req);
@@ -211,6 +224,7 @@ app.get('/sitemap.xml', ah(async (req, res) => {
   const base = baseUrl(req);
   const paths = [
     '/', '/san-pham',
+    ...res.locals.groups.filter((g) => g.categories.length > 1).map((g) => g.href),
     ...Object.keys(res.locals.categories).map((key) => `/san-pham?loai=${key}`),
     ...(await db.query('SELECT slug FROM products ORDER BY id')).map((p) => `/san-pham/${p.slug}`),
     '/gioi-thieu', '/cua-hang', '/lien-he',
@@ -234,6 +248,11 @@ app.use('/tai-khoan', customers.router);
 // Trang chủ
 app.get('/', ah(async (req, res) => {
   const featured = await db.query(`${PRODUCTS} ORDER BY created_at DESC, p.id ASC LIMIT 5`);
+  // Danh mục chưa có ảnh riêng thì lấy ảnh đại diện của sản phẩm mới nhất trong danh mục đó,
+  // để dòng nào rê chuột vào cũng có ảnh nền chứ không chỉ nền đen
+  const covers = Object.fromEntries((await db.query(`
+    SELECT DISTINCT ON (category) category, image_url FROM products
+    WHERE image_url IS NOT NULL ORDER BY category, created_at DESC, id DESC`)).map((r) => [r.category, r.image_url]));
   const { site, seo } = res.locals;
   seo.title = `${site.name} | Giày dép, túi xách, kính mát nữ`;
   seo.jsonLd = {
@@ -249,19 +268,22 @@ app.get('/', ah(async (req, res) => {
     storeImage: findImage('store'),
     // Ảnh nền hiện khi rê chuột vào từng dòng danh mục: public/images/categories/<mã danh mục>.jpg
     categoryImages: Object.fromEntries(
-      Object.keys(CATEGORIES).map((key) => [key, findImage(`categories/${key}`)])),
+      Object.keys(CATEGORIES).map((key) => [key, findImage(`categories/${key}`) || covers[key] || null])),
   });
 }));
 
 // Danh sách sản phẩm
 app.get('/san-pham', ah(async (req, res) => {
   const category = Object.hasOwn(CATEGORIES, req.query.loai) ? req.query.loai : '';
+  // Đã chọn danh mục thì nhóm là nhóm chứa danh mục đó; chưa chọn thì lấy nhóm trên link (?nhom=)
+  const group = category ? groupOf(category) : (Object.hasOwn(GROUPS, req.query.nhom) ? req.query.nhom : '');
   const sort = Object.hasOwn(SORTS, req.query.sort) ? req.query.sort : 'newest';
   const q = queryText(req.query.q);
 
   let products = category
     ? await db.query(`${PRODUCTS} WHERE category = ? ORDER BY ${SORTS[sort].sql}`, [category])
     : await db.query(`${PRODUCTS} ORDER BY ${SORTS[sort].sql}`);
+  if (!category && group) products = products.filter((p) => GROUPS[group].categories.includes(p.category));
   if (q) products = products.filter((p) => fold(p.name).includes(fold(q)));
 
   // Ghi lại từ khoá khách tìm để shop biết khách cần gì (xem ở trang quản trị SEO)
@@ -272,19 +294,25 @@ app.get('/san-pham', ah(async (req, res) => {
 
   const { seo, shopName } = res.locals;
   if (q) seo.noindex = true; // trang kết quả tìm kiếm không đưa lên Google
+  const audience = group === 'tre-em' ? '' : ' nữ';
   if (category) {
     seo.canonical = `${seo.base}/san-pham?loai=${category}`;
-    seo.title = `${CATEGORIES[category]} nữ | ${shopName}`;
-    seo.description = `${CATEGORIES[category]} nữ tại ${shopName}: ${products.length} mẫu đang bán, form chuẩn, fullbox.`;
+    seo.title = `${CATEGORIES[category]}${audience} | ${shopName}`;
+    seo.description = `${CATEGORIES[category]}${audience} tại ${shopName}: ${products.length} mẫu đang bán.`;
+  } else if (group) {
+    seo.canonical = `${seo.base}/san-pham?nhom=${group}`;
+    seo.title = `${GROUPS[group].label}${audience} | ${shopName}`;
+    seo.description = `${GROUPS[group].label}${audience} tại ${shopName}: ${products.length} mẫu đang bán.`;
   } else {
     seo.title = `Sản phẩm mới | ${shopName}`;
   }
 
   // Tạo link giữ nguyên các bộ lọc đang chọn, chỉ đổi phần truyền vào
   const link = (change) => {
-    const next = { category, sort, q, ...change };
+    const next = { category, group, sort, q, ...change };
     const qs = new URLSearchParams();
     if (next.category) qs.set('loai', next.category);
+    else if (next.group) qs.set('nhom', next.group);
     if (next.sort && next.sort !== 'newest') qs.set('sort', next.sort);
     if (next.q) qs.set('q', next.q);
     const s = qs.toString();
@@ -292,10 +320,10 @@ app.get('/san-pham', ah(async (req, res) => {
   };
 
   res.render('products', {
-    title: category ? CATEGORIES[category] : 'Sản phẩm mới',
+    title: category ? CATEGORIES[category] : group ? GROUPS[group].label : 'Sản phẩm mới',
     products,
     sorts: SORTS,
-    current: { category, sort, q },
+    current: { category, group, sort, q },
     link,
   });
 }));
@@ -341,7 +369,7 @@ app.get('/san-pham/:slug', ah(async (req, res, next) => {
   // Gợi ý mua kèm: lấy các sản phẩm đã gắn trong product_links; giày dép chưa gắn gì thì gợi ý kính
   let pairs = await db
     .query(`${PRODUCTS} JOIN product_links l ON l.linked_id = p.id WHERE l.product_id = ? ORDER BY l.id`, [product.id]);
-  if (!pairs.length && product.category !== 'kinh') {
+  if (!pairs.length && groupOf(product.category) === 'giay-dep') {
     pairs = await db.query(`${PRODUCTS} WHERE category = 'kinh' ORDER BY created_at DESC, p.id DESC LIMIT 4`);
   }
 
@@ -405,6 +433,7 @@ app.get('/san-pham/:slug/nhanh', ah(async (req, res, next) => {
     image: product.image_url,
     colors: colors.map((c) => ({ id: c.id, name: c.name, hex: c.hex })),
     sizes: sizesOf(product),
+    sizeLabels: sizesOf(product).map((s) => sizeLabel(product, s)),
     stock: await stockMap(db, product, colors),
   });
 }));
@@ -619,7 +648,7 @@ app.post('/tra-cuu-don', ah(async (req, res) => {
   let order = await db.one('SELECT * FROM orders WHERE id = ?', [orderIdFromCode(values.code)]);
   if (order && (!digits(values.phone) || digits(order.phone) !== digits(values.phone))) order = null;
   if (order) {
-    order.items = await db.query('SELECT name, color, size, qty, price FROM order_items WHERE order_id = ? ORDER BY id', [order.id]);
+    order.items = await db.query('SELECT name, color, size, size_label, qty, price FROM order_items WHERE order_id = ? ORDER BY id', [order.id]);
   }
   res.status(order ? 200 : 404).render('order-lookup', {
     title: 'Tra cứu đơn hàng', values, order, notFound: !order, statuses: ORDER_STATUS, payments: PAYMENT_STATUS, orderCode,

@@ -39,7 +39,7 @@
             <% for (const item of order.items) { %>
               <li>
                 <% if (item.slug) { %><a href="/san-pham/<%= item.slug %>#danh-gia"><%= item.name %></a><% } else { %><%= item.name %><% } %>
-                <span class="muted"><%= [item.color, item.size && `size ${item.size}`, `x${item.qty}`].filter(Boolean).join(' · ') %></span>
+                <span class="muted"><%= [item.color, item.size && `size ${item.size_label || item.size}`, `x${item.qty}`].filter(Boolean).join(' · ') %></span>
               </li>
             <% } %>
           </ul>

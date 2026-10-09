@@ -6,7 +6,7 @@ const express = require('express');
 const db = require('./db');
 const { fold } = require('./text');
 const { retailPrice } = require('./pricing');
-const { CATEGORIES, CODE_PREFIXES, nextCode, sizesOf, colorsOf, variantsOf, stockMap, setStock } = require('./catalog');
+const { CATEGORIES, GROUPS, CODE_PREFIXES, nextCode, sizesOf, colorsOf, variantsOf, stockMap, setStock } = require('./catalog');
 const { ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, orderCode, cancelOrder, markPaid } = require('./orders');
 const { syncProductMedia, prefixOf } = require('./media');
 const storage = require('./storage');
@@ -57,7 +57,7 @@ router.use((req, res, next) => {
   res.set('Cache-Control', 'no-store');
   res.locals.admin = {
     statuses: ORDER_STATUS, methods: PAYMENT_METHOD, payments: PAYMENT_STATUS,
-    categories: CATEGORIES, codePrefixes: CODE_PREFIXES, orderCode, sourceLabel, section: req.path.split('/')[1] || '',
+    categories: CATEGORIES, groups: GROUPS, codePrefixes: CODE_PREFIXES, orderCode, sourceLabel, section: req.path.split('/')[1] || '',
   };
   next();
 });
@@ -207,7 +207,9 @@ router.get('/san-pham', ah(async (req, res) => {
 function readProductForm(body, category) {
   const errors = {};
   const cost = text(body.cost) === '' ? null : int(body.cost);
-  const hasSize = body.has_size === '1';
+  // Size chữ (quần áo): có thì size ghi bằng số thứ tự 1..n của các tên này
+  const labels = text(body.size_labels).split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
+  const hasSize = body.has_size === '1' || labels.length > 0;
   const values = {
     name: text(body.name),
     badge: text(body.badge).slice(0, 30) || null,
@@ -215,13 +217,16 @@ function readProductForm(body, category) {
     cost,
     // có giá sỉ thì giá bán tính theo pricing.js, không thì dùng giá nhập tay
     price: cost !== null ? retailPrice(category, cost) : int(body.price),
-    size_min: hasSize ? int(body.size_min) : 0,
-    size_max: hasSize ? int(body.size_max) : 0,
+    size_min: labels.length ? 1 : hasSize ? int(body.size_min) : 0,
+    size_max: labels.length || (hasSize ? int(body.size_max) : 0),
+    size_labels: labels.join(',') || null,
   };
   if (!values.name || values.name.length > 150) errors.name = 'Vui lòng nhập tên sản phẩm.';
   if (text(body.cost) !== '' && cost === null) errors.cost = 'Giá sỉ phải là số, tính bằng đồng.';
   if (values.price === null) errors.price = 'Nhập giá sỉ hoặc giá bán.';
-  if (hasSize && !(values.size_min >= 30 && values.size_max <= 46 && values.size_min <= values.size_max)) {
+  if (labels.length > 12 || labels.some((s) => !/^[A-Z0-9]{1,10}$/.test(s))) {
+    errors.size = 'Size chữ: tối đa 12 size, mỗi size chỉ gồm chữ và số, vd: M, L, XL, 3XL.';
+  } else if (!labels.length && hasSize && !(values.size_min >= 30 && values.size_max <= 46 && values.size_min <= values.size_max)) {
     errors.size = 'Size từ 30 đến 46, size nhỏ nhất không lớn hơn size lớn nhất.';
   }
   return { values, errors };
@@ -242,10 +247,10 @@ router.post('/san-pham/moi', ah(async (req, res) => {
   const code = await nextCode(db, category);
   const slug = `${fold(values.name).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${code.toLowerCase()}`;
   const { id } = await db.one(`
-    INSERT INTO products (slug, code, name, category, badge, cost, price, size_min, size_max, description)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO products (slug, code, name, category, badge, cost, price, size_min, size_max, size_labels, description)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     RETURNING id
-  `, [slug, code, values.name, category, values.badge, values.cost, values.price, values.size_min, values.size_max, values.description]);
+  `, [slug, code, values.name, category, values.badge, values.cost, values.price, values.size_min, values.size_max, values.size_labels, values.description]);
   res.redirect(`/admin/san-pham/${id}?ok=1`);
 }));
 
@@ -282,9 +287,9 @@ router.post('/san-pham/:id(\\d+)', ah(async (req, res, next) => {
     return renderProduct(res, { ...product, ...req.body, cost: text(req.body.cost) }, { errors, status: 400 });
   }
   await db.run(`
-    UPDATE products SET name = ?, badge = ?, description = ?, cost = ?, price = ?, size_min = ?, size_max = ?
+    UPDATE products SET name = ?, badge = ?, description = ?, cost = ?, price = ?, size_min = ?, size_max = ?, size_labels = ?
     WHERE id = ?
-  `, [values.name, values.badge, values.description, values.cost, values.price, values.size_min, values.size_max, product.id]);
+  `, [values.name, values.badge, values.description, values.cost, values.price, values.size_min, values.size_max, values.size_labels, product.id]);
 
   const updated = await getProduct(product.id);
   for (const v of await variantsOf(db, updated)) {

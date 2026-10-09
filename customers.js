@@ -126,7 +126,7 @@ async function renderAccount(res, { values, errors = {}, status = 200, saved = '
     FROM orders o WHERE customer_id = ? ORDER BY id DESC LIMIT 50`, [customer.id]);
   for (const order of orders) {
     order.items = await db.query(`
-      SELECT i.name, i.color, i.size, i.qty, p.slug FROM order_items i
+      SELECT i.name, i.color, i.size, i.size_label, i.qty, p.slug FROM order_items i
       LEFT JOIN products p ON p.id = i.product_id WHERE i.order_id = ? ORDER BY i.id`, [order.id]);
   }
   res.status(status).render('account/profile', {

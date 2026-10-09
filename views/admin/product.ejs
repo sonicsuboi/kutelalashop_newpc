@@ -22,14 +22,14 @@
   <div class="scroll">
     <table class="table stock">
       <thead>
-        <tr><th>Màu</th><% for (const s of sizeCols) { %><th><%= s ? `Size ${s}` : 'Số lượng' %></th><% } %></tr>
+        <tr><th>Màu</th><% for (const s of sizeCols) { %><th><%= s ? `Size ${sizeLabel(product, s)}` : 'Số lượng' %></th><% } %></tr>
       </thead>
       <tbody>
         <% for (const c of colorRows) { %>
           <tr>
             <th><% if (c.hex) { %><i class="dot" style="background: <%= c.hex %>"></i><% } %><%= c.name %></th>
             <% for (const s of sizeCols) { %>
-              <td><input type="number" name="stock_<%= c.id %>_<%= s %>" value="<%= stock[`${c.id}.${s}`] || 0 %>" min="0" max="9999" aria-label="<%= c.name %><%= s ? `, size ${s}` : '' %>"></td>
+              <td><input type="number" name="stock_<%= c.id %>_<%= s %>" value="<%= stock[`${c.id}.${s}`] || 0 %>" min="0" max="9999" aria-label="<%= c.name %><%= s ? `, size ${sizeLabel(product, s)}` : '' %>"></td>
             <% } %>
           </tr>
         <% } %>

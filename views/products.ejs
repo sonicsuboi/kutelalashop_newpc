@@ -10,14 +10,27 @@
   </button>
 </section>
 
-<section class="filters" id="filters" <%= current.category || current.sort !== 'newest' ? '' : 'hidden' %>>
+<%
+  // Danh mục con chỉ hiện sau khi chọn một nhóm có từ hai danh mục trở lên
+  const openGroup = groups.find((g) => g.key === current.group && g.categories.length > 1);
+%>
+<section class="filters" id="filters" <%= current.category || current.group || current.sort !== 'newest' ? '' : 'hidden' %>>
   <div class="filter-group">
-    <h2>Danh mục</h2>
-    <a href="<%= link({ category: '' }) %>" class="<%= current.category ? '' : 'active' %>">Tất cả</a>
-    <% for (const [key, label] of Object.entries(categories)) { %>
-      <a href="<%= link({ category: key }) %>" class="<%= current.category === key ? 'active' : '' %>"><%= label %></a>
+    <h2>Nhóm hàng</h2>
+    <a href="<%= link({ category: '', group: '' }) %>" class="<%= current.group ? '' : 'active' %>">Tất cả</a>
+    <% for (const g of groups) { %>
+      <a href="<%= link({ category: '', group: g.key }) %>" class="<%= current.group === g.key ? 'active' : '' %>"><%= g.label %></a>
     <% } %>
   </div>
+  <% if (openGroup) { %>
+    <div class="filter-group">
+      <h2>Danh mục</h2>
+      <a href="<%= link({ category: '' }) %>" class="<%= current.category ? '' : 'active' %>">Tất cả <%= openGroup.label.toLowerCase() %></a>
+      <% for (const c of openGroup.categories) { %>
+        <a href="<%= link({ category: c.key }) %>" class="<%= current.category === c.key ? 'active' : '' %>"><%= c.label %></a>
+      <% } %>
+    </div>
+  <% } %>
   <div class="filter-group">
     <h2>Sắp xếp</h2>
     <% for (const [key, s] of Object.entries(sorts)) { %>

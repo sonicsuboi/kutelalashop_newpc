@@ -22,7 +22,7 @@
             </a>
             <div class="cart-info">
               <h2><a href="/san-pham/<%= line.product.slug %>"><%= line.product.name %></a></h2>
-              <p class="colors"><%= [line.colorName && `Màu ${line.colorName}`, line.size && `Size ${line.size}`].filter(Boolean).join(' · ') %></p>
+              <p class="colors"><%= [line.colorName && `Màu ${line.colorName}`, line.sizeLabel && `Size ${line.sizeLabel}`].filter(Boolean).join(' · ') %></p>
               <p class="price"><%= formatPrice(line.product.price) %></p>
               <% if (line.left < line.qty) { %><p class="option-error"><%= line.left ? `Chỉ còn ${line.left} sản phẩm` : 'Đã hết hàng' %></p><% } %>
               <form class="cart-edit" action="/gio-hang/cap-nhat" method="post">

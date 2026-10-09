@@ -63,8 +63,11 @@
       <ul>
         <li><a href="/">Trang chủ</a></li>
         <li><a href="/san-pham">Sản phẩm mới</a></li>
-        <% for (const [key, label] of Object.entries(categories)) { %>
-          <li class="sub"><a href="/san-pham?loai=<%= key %>"><%= label %></a></li>
+        <% for (const g of groups) { %>
+          <li><a href="<%= g.href %>"><%= g.label %></a></li>
+          <% if (g.categories.length > 1) { for (const c of g.categories) { %>
+            <li class="sub"><a href="/san-pham?loai=<%= c.key %>"><%= c.label %></a></li>
+          <% } } %>
         <% } %>
         <li><a href="/yeu-thich">Yêu thích</a></li>
         <li><a href="/gio-hang">Giỏ hàng</a></li>
