@@ -10,7 +10,7 @@ const { fold } = require('./text');
 const { syncAllMedia, syncProductMedia } = require('./media');
 const { CATEGORIES, GROUPS, groupOf, sizesOf, sizeLabel, colorsOf, stockOf, stockMap } = require('./catalog');
 const {
-  ORDER_STATUS, PAYMENT_STATUS, orderCode, orderIdFromCode, OutOfStockError, createOrder, cancelOrder, markPaid,
+  ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, orderCode, orderIdFromCode, OutOfStockError, createOrder, cancelOrder, markPaid,
 } = require('./orders');
 const vnpay = require('./vnpay');
 const { bankOf, transferQr } = require('./vietqr');
@@ -655,10 +655,12 @@ app.post('/tra-cuu-don', ah(async (req, res) => {
   let order = await db.one('SELECT * FROM orders WHERE id = ?', [orderIdFromCode(values.code)]);
   if (order && (!digits(values.phone) || digits(order.phone) !== digits(values.phone))) order = null;
   if (order) {
-    order.items = await db.query('SELECT name, color, size, size_label, qty, price FROM order_items WHERE order_id = ? ORDER BY id', [order.id]);
+    order.items = await db.query(`
+      SELECT i.name, i.color, i.size, i.size_label, i.qty, i.price, p.slug, p.image_url FROM order_items i
+      LEFT JOIN products p ON p.id = i.product_id WHERE i.order_id = ? ORDER BY i.id`, [order.id]);
   }
   res.status(order ? 200 : 404).render('order-lookup', {
-    title: 'Tra cứu đơn hàng', values, order, notFound: !order, statuses: ORDER_STATUS, payments: PAYMENT_STATUS, orderCode,
+    title: 'Tra cứu đơn hàng', values, order, notFound: !order, statuses: ORDER_STATUS, payments: PAYMENT_STATUS, methods: PAYMENT_METHOD, orderCode,
   });
 }));
 

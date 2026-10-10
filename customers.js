@@ -5,7 +5,7 @@ const crypto = require('node:crypto');
 const { promisify } = require('node:util');
 const express = require('express');
 const db = require('./db');
-const { ORDER_STATUS, orderCode } = require('./orders');
+const { ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, orderCode } = require('./orders');
 const ah = require('./async-handler');
 
 const scrypt = promisify(crypto.scrypt);
@@ -119,33 +119,43 @@ router.post('/dang-xuat', (req, res) => {
 // Mọi trang bên dưới đều cần đăng nhập
 router.use((req, res, next) => (res.locals.customer ? next() : res.redirect('/tai-khoan/dang-nhap')));
 
-async function renderAccount(res, { values, errors = {}, status = 200, saved = '' } = {}) {
+// Trang tài khoản chia ba mục: thong-tin (thông tin nhận hàng), don-hang (đơn đã đặt), mat-khau (đổi mật khẩu)
+async function renderAccount(res, tab, { values, errors = {}, status = 200, saved = false } = {}) {
   const customer = res.locals.customer;
-  const orders = await db.query(`
+  const orders = tab !== 'don-hang' ? [] : await db.query(`
     SELECT o.*, (SELECT COALESCE(SUM(qty), 0) FROM order_items i WHERE i.order_id = o.id)::int AS item_count
     FROM orders o WHERE customer_id = ? ORDER BY id DESC LIMIT 50`, [customer.id]);
   for (const order of orders) {
     order.items = await db.query(`
-      SELECT i.name, i.color, i.size, i.size_label, i.qty, p.slug FROM order_items i
+      SELECT i.name, i.color, i.size, i.size_label, i.qty, i.price, p.slug, p.image_url FROM order_items i
       LEFT JOIN products p ON p.id = i.product_id WHERE i.order_id = ? ORDER BY i.id`, [order.id]);
   }
   res.status(status).render('account/profile', {
-    title: 'Tài khoản', values: values || customer, errors, saved, orders, statuses: ORDER_STATUS, orderCode,
+    title: { 'thong-tin': 'Tài khoản', 'don-hang': 'Đơn hàng của tôi', 'mat-khau': 'Đổi mật khẩu' }[tab],
+    tab, values: values || customer, errors, saved, orders, statuses: ORDER_STATUS, payments: PAYMENT_STATUS, methods: PAYMENT_METHOD, orderCode,
   });
 }
 
 router.get('/', ah(async (req, res) => {
-  await renderAccount(res, { saved: typeof req.query.ok === 'string' ? req.query.ok : '' });
+  await renderAccount(res, 'thong-tin', { saved: req.query.ok === '1' });
+}));
+
+router.get('/don-hang', ah(async (req, res) => {
+  await renderAccount(res, 'don-hang');
+}));
+
+router.get('/mat-khau', ah(async (req, res) => {
+  await renderAccount(res, 'mat-khau', { saved: req.query.ok === '1' });
 }));
 
 router.post('/', ah(async (req, res) => {
   const values = { name: text(req.body.name).slice(0, 100), address: text(req.body.address).slice(0, 300) };
   if (!values.name) {
-    return renderAccount(res, { values: { ...res.locals.customer, ...values }, errors: { name: 'Vui lòng nhập họ tên.' }, status: 400 });
+    return renderAccount(res, 'thong-tin', { values: { ...res.locals.customer, ...values }, errors: { name: 'Vui lòng nhập họ tên.' }, status: 400 });
   }
   await db.run('UPDATE customers SET name = ?, address = ? WHERE id = ?',
     [values.name, values.address || null, res.locals.customer.id]);
-  res.redirect('/tai-khoan?ok=thong-tin');
+  res.redirect('/tai-khoan?ok=1');
 }));
 
 router.post('/mat-khau', ah(async (req, res) => {
@@ -155,9 +165,9 @@ router.post('/mat-khau', ah(async (req, res) => {
   const errors = {};
   if (!(await checkPassword(current, row.password_hash))) errors.current = 'Mật khẩu hiện tại không đúng.';
   else if (password.length < 6 || password.length > 100) errors.password = 'Mật khẩu mới từ 6 ký tự trở lên.';
-  if (Object.keys(errors).length) return renderAccount(res, { errors, status: 400 });
+  if (Object.keys(errors).length) return renderAccount(res, 'mat-khau', { errors, status: 400 });
   await db.run('UPDATE customers SET password_hash = ? WHERE id = ?', [await hashPassword(password), res.locals.customer.id]);
-  res.redirect('/tai-khoan?ok=mat-khau');
+  res.redirect('/tai-khoan/mat-khau?ok=1');
 }));
 
 module.exports = { router, currentCustomer, hashPassword };

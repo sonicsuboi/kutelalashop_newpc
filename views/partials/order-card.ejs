@@ -1,0 +1,50 @@
+<%# Một đơn hàng của khách: mã, ngày, tình trạng, từng sản phẩm kèm hình và giá, tổng tiền.
+    Dùng ở trang Đơn hàng của tôi và trang Tra cứu đơn hàng. review = true thì gợi ý viết đánh giá khi đơn hoàn tất. %>
+<%
+  // created_at lưu giờ UTC, hiện theo giờ Việt Nam
+  const placed = new Date(order.created_at.replace(' ', 'T').slice(0, 19) + 'Z');
+  placed.setUTCHours(placed.getUTCHours() + 7);
+  const day = placed.toISOString();
+%>
+<article class="order-card">
+  <header>
+    <div>
+      <h3><%= orderCode(order.id) %></h3>
+      <p class="muted">Đặt ngày <%= day.slice(8, 10) %>/<%= day.slice(5, 7) %>/<%= day.slice(0, 4) %></p>
+    </div>
+    <div class="order-state">
+      <span class="order-tag st-<%= order.status %>"><%= statuses[order.status] %></span>
+    </div>
+  </header>
+
+  <ul class="order-items">
+    <% for (const item of order.items) { %>
+      <li>
+        <% if (item.slug) { %><a class="order-thumb" href="/san-pham/<%= item.slug %>" tabindex="-1" aria-hidden="true"><% } else { %><span class="order-thumb"><% } %>
+          <% if (item.image_url) { %><img src="<%= item.image_url %>" alt="" loading="lazy"><% } %>
+        <% if (item.slug) { %></a><% } else { %></span><% } %>
+        <div class="order-item-info">
+          <p class="order-item-name"><% if (item.slug) { %><a href="/san-pham/<%= item.slug %>"><%= item.name %></a><% } else { %><%= item.name %><% } %></p>
+          <p class="muted"><%= [item.color && `Màu ${item.color}`, item.size && `Size ${item.size_label || item.size}`].filter(Boolean).join(' · ') %></p>
+          <p class="muted"><%= formatPrice(item.price) %> × <%= item.qty %></p>
+          <% if (locals.review && order.status === 'done' && item.slug) { %><a class="text-btn" href="/san-pham/<%= item.slug %>#danh-gia">Viết đánh giá</a><% } %>
+        </div>
+        <p class="order-item-total"><%= formatPrice(item.price * item.qty) %></p>
+      </li>
+    <% } %>
+  </ul>
+
+  <footer>
+    <div>
+      <p class="muted">Giao tới: <%= order.address %></p>
+      <p class="order-pay">
+        Thanh toán: <b><%= methods[order.payment_method] %></b> ·
+        <span class="order-tag pay-<%= order.payment_status %>"><%= payments[order.payment_status] %></span>
+      </p>
+      <% if (order.payment_method === 'bank' && order.payment_status === 'unpaid' && order.status !== 'cancelled') { %>
+        <a class="text-btn" href="/gio-hang/cam-on?ma=<%= orderCode(order.id) %>">Xem mã QR chuyển khoản</a>
+      <% } %>
+    </div>
+    <p class="order-total"><span>Tổng cộng</span> <b><%= formatPrice(order.total) %></b></p>
+  </footer>
+</article>

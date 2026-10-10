@@ -20,18 +20,8 @@
   </form>
 
   <% if (order) { %>
-    <h2>Đơn <%= orderCode(order.id) %></h2>
-    <ul class="account-orders">
-      <li>
-        <p><b><%= statuses[order.status] %></b> · <%= payments[order.payment_status] %> · <%= formatPrice(order.total) %></p>
-        <ul>
-          <% for (const item of order.items) { %>
-            <li><%= item.name %> <span class="muted"><%= [item.color, item.size && `size ${item.size_label || item.size}`, `x${item.qty}`].filter(Boolean).join(' · ') %></span></li>
-          <% } %>
-        </ul>
-        <p class="muted">Giao tới: <%= order.address %></p>
-      </li>
-    </ul>
+    <h2>Kết quả</h2>
+    <%- include('partials/order-card', { order }) %>
   <% } %>
 
   <p class="account-alt">Cần hỗ trợ về đơn hàng? <a href="/lien-he">Liên hệ shop</a></p>

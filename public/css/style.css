@@ -1168,3 +1168,69 @@ main {
 .transfer dt { color: var(--muted); }
 .transfer dd { margin: 0; }
 .transfer .muted { font-size: 12px; }
+/* Menu xổ xuống ở biểu tượng tài khoản trên header */
+.account-menu { position: relative; display: inline-flex; }
+.account-drop {
+  position: absolute;
+  top: 100%;
+  right: -12px;
+  z-index: 20;
+  min-width: 200px;
+  padding: 8px 0;
+  background: #fff;
+  border: 1px solid var(--line);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .12);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(6px);
+  transition: opacity .18s ease, transform .18s ease, visibility .18s;
+}
+/* khoảng đệm vô hình để chuột đi từ biểu tượng xuống menu không làm menu đóng */
+.account-drop::before { content: ""; position: absolute; left: 0; right: 0; top: -14px; height: 14px; }
+.account-menu:hover .account-drop,
+.account-menu:focus-within .account-drop { opacity: 1; visibility: visible; transform: translateY(8px); }
+.account-drop a,
+.account-drop button { display: block; width: 100%; padding: 10px 20px; font-size: 13px; text-align: left; white-space: nowrap; }
+.account-drop a:hover,
+.account-drop button:hover { background: var(--tile); }
+.account-hello { padding: 8px 20px 12px; margin-bottom: 6px; font-size: 11px; color: var(--muted); border-bottom: 1px solid var(--line); white-space: nowrap; }
+.account-drop li:last-child:has(form) { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+
+/* Các mục của trang tài khoản */
+.account-tabs { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 28px; margin-bottom: 48px; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.account-tabs a { padding-bottom: 6px; color: var(--muted); border-bottom: 1px solid transparent; }
+.account-tabs a:hover { color: var(--ink); }
+.account-tabs a.active { color: var(--ink); border-bottom-color: var(--ink); }
+@media (hover: none) { .account-drop { display: none; } }
+/* Thẻ đơn hàng của khách: từng sản phẩm kèm hình, giá và tổng tiền */
+.account.account-wide { max-width: 760px; }
+.order-card { margin-bottom: 28px; border: 1px solid var(--line); }
+.order-card header,
+.order-card footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 16px 20px; background: var(--tile); }
+.order-card footer { align-items: flex-end; background: none; border-top: 1px solid var(--line); }
+.order-card h3 { font-size: 15px; font-weight: 800; letter-spacing: .06em; }
+.order-card .muted { font-size: 12px; }
+.order-state { text-align: right; }
+.order-tag { display: inline-block; padding: 3px 10px; font-size: 11px; font-weight: 700; background: #fff; border: 1px solid var(--line); }
+.order-tag.st-new { background: var(--accent); border-color: var(--accent); }
+.order-tag.st-done { color: #fff; background: #1d6b3a; border-color: #1d6b3a; }
+.order-tag.st-cancelled { color: #fff; background: #b3261e; border-color: #b3261e; }
+.order-items li { display: grid; grid-template-columns: 84px 1fr auto; gap: 16px; align-items: center; padding: 16px 20px; border-top: 1px solid var(--line); }
+.order-items li:first-child { border-top: 0; }
+.order-thumb { display: block; width: 84px; aspect-ratio: 1; background: var(--tile); }
+.order-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.order-item-name { font-weight: 700; }
+.order-item-info .text-btn { display: inline-block; margin-top: 6px; }
+.order-item-total { font-weight: 700; white-space: nowrap; }
+.order-total { display: flex; gap: 16px; align-items: baseline; white-space: nowrap; }
+.order-total b { font-size: 17px; }
+.account-logout { margin-top: 32px; }
+@media (max-width: 560px) {
+  .order-items li { grid-template-columns: 64px 1fr; }
+  .order-thumb { width: 64px; }
+  .order-item-total { grid-column: 2; }
+  .order-card footer { flex-direction: column; align-items: flex-start; }
+}.order-pay { margin-top: 8px; font-size: 13px; }
+.order-tag.pay-paid { color: #fff; background: #1d6b3a; border-color: #1d6b3a; }
+.order-tag.pay-failed { color: #fff; background: #b3261e; border-color: #b3261e; }
+.order-card footer .text-btn { display: inline-block; margin-top: 8px; }

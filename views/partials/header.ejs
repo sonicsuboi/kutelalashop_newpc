@@ -42,9 +42,27 @@
       <a class="icon-btn" href="/yeu-thich" aria-label="Yêu thích">
         <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 1.8l2.5 5.3 5.7.7-4.2 4 1.1 5.7L10 14.7l-5.1 2.8L6 11.8l-4.2-4 5.7-.7z" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linejoin="round"/></svg>
       </a>
-      <a class="icon-btn" href="<%= locals.customer ? '/tai-khoan' : '/tai-khoan/dang-nhap' %>" aria-label="<%= locals.customer ? 'Tài khoản' : 'Đăng nhập' %>">
+      <%# Rê chuột (hoặc Tab) vào biểu tượng người thì xổ menu tài khoản; trên điện thoại bấm vào là tới trang tài khoản %>
+      <div class="account-menu">
+      <a class="icon-btn" href="<%= locals.customer ? '/tai-khoan' : '/tai-khoan/dang-nhap' %>" aria-label="<%= locals.customer ? 'Tài khoản' : 'Đăng nhập' %>" aria-haspopup="true">
         <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="6.5" r="3.5" stroke="currentColor" stroke-width="1.3" fill="none"/><path d="M3 18c.6-3.6 3.4-5.5 7-5.5s6.4 1.900 7 5.500" stroke="currentColor" stroke-width="1.3" fill="none"/></svg>
       </a>
+        <ul class="account-drop">
+          <% if (locals.customer) { %>
+            <li class="account-hello">Xin chào, <%= customer.name %></li>
+            <li><a href="/tai-khoan">Tài khoản</a></li>
+            <li><a href="/tai-khoan/don-hang">Đơn hàng</a></li>
+            <li><a href="/yeu-thich">Yêu thích</a></li>
+            <li><a href="/tai-khoan/mat-khau">Đổi mật khẩu</a></li>
+            <li><form action="/tai-khoan/dang-xuat" method="post"><button type="submit">Đăng xuất</button></form></li>
+          <% } else { %>
+            <li><a href="/tai-khoan/dang-nhap">Đăng nhập</a></li>
+            <li><a href="/tai-khoan/dang-ky">Đăng ký</a></li>
+            <li><a href="/tra-cuu-don">Tra cứu đơn hàng</a></li>
+            <li><a href="/yeu-thich">Yêu thích</a></li>
+          <% } %>
+        </ul>
+      </div>
       <a class="icon-btn" href="/gio-hang" data-cart-icon aria-label="Giỏ hàng<%= cartCount ? ' (' + cartCount + ' sản phẩm)' : '' %>">
         <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 6.5h13l-1 11h-11zM7 6.5V5a3 3 0 0 1 6 0v1.5" stroke="currentColor" stroke-width="1.3" fill="none" stroke-linejoin="round"/></svg>
         <span class="cart-count" aria-hidden="true" data-cart-count <%= cartCount ? '' : 'hidden' %>><%= cartCount %></span>
@@ -72,6 +90,12 @@
         <li><a href="/yeu-thich">Yêu thích</a></li>
         <li><a href="/gio-hang">Giỏ hàng</a></li>
         <li><a href="<%= locals.customer ? '/tai-khoan' : '/tai-khoan/dang-nhap' %>"><%= locals.customer ? 'Tài khoản' : 'Đăng nhập' %></a></li>
+        <% if (locals.customer) { %>
+          <li class="sub"><a href="/tai-khoan/don-hang">Đơn hàng</a></li>
+          <li class="sub"><a href="/tai-khoan/mat-khau">Đổi mật khẩu</a></li>
+        <% } else { %>
+          <li class="sub"><a href="/tra-cuu-don">Tra cứu đơn hàng</a></li>
+        <% } %>
         <li><a href="/gioi-thieu">Giới thiệu</a></li>
         <li><a href="/cua-hang">Hệ thống cửa hàng</a></li>
         <li><a href="/lien-he">Liên hệ</a></li>
