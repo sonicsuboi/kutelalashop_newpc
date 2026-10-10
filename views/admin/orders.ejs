@@ -1,18 +1,61 @@
 <%- include('head') %>
+<%
+  // Link giữ nguyên các bộ lọc đang chọn, chỉ đổi phần truyền vào
+  const link = (change, path = '/admin/don-hang') => {
+    const next = { status, tt: pay, q, ...change };
+    const qs = new URLSearchParams(Object.entries(next).filter(([, v]) => v));
+    return path + (qs.toString() ? '?' + qs : '');
+  };
+%>
 
-<h1><%= title %></h1>
+<div class="section-head">
+  <h1><%= title %></h1>
+  <div class="quick-links">
+    <button class="btn btn-light" type="button" data-print-selected disabled>In bill đã chọn</button>
+    <a class="btn btn-light" href="<%= link({}, '/admin/don-hang/xuat.csv') %>">Xuất Excel</a>
+  </div>
+</div>
 
 <nav class="tabs">
-  <a href="/admin/don-hang" class="<%= status ? '' : 'active' %>">Tất cả</a>
+  <a href="<%= link({ status: '' }) %>" class="<%= status ? '' : 'active' %>">Tất cả</a>
   <% for (const [key, label] of Object.entries(admin.statuses)) { %>
-    <a href="/admin/don-hang?status=<%= key %>" class="<%= status === key ? 'active' : '' %>"><%= label %> (<%= counts[key] || 0 %>)</a>
+    <a href="<%= link({ status: key }) %>" class="<%= status === key ? 'active' : '' %>"><%= label %> (<%= counts[key] || 0 %>)</a>
   <% } %>
 </nav>
 
+<form class="inline" action="/admin/don-hang" method="get">
+  <% if (status) { %><input type="hidden" name="status" value="<%= status %>"><% } %>
+  <input type="search" name="q" value="<%= q %>" placeholder="Mã đơn, tên, số điện thoại, mã vận đơn" aria-label="Tìm đơn hàng">
+  <select name="tt" aria-label="Thanh toán">
+    <option value="">Mọi tình trạng thanh toán</option>
+    <option value="unpaid" <%= pay === 'unpaid' ? 'selected' : '' %>>Chưa thanh toán</option>
+    <option value="paid" <%= pay === 'paid' ? 'selected' : '' %>>Đã thanh toán</option>
+  </select>
+  <button class="btn btn-light" type="submit">Lọc</button>
+  <% if (q || pay) { %><a href="<%= link({ q: '', tt: '' }) %>">Bỏ lọc</a><% } %>
+</form>
+
 <% if (orders.length) { %>
-  <%- include('order-rows', { orders }) %>
+  <p class="muted small"><%= orders.length %> đơn · tổng <%= formatPrice(total) %> (không tính đơn đã huỷ)</p>
+  <%- include('order-rows', { orders, actions: true }) %>
 <% } else { %>
-  <p class="muted">Không có đơn hàng nào ở mục này.</p>
+  <p class="muted">Không có đơn hàng nào khớp.</p>
 <% } %>
+
+<script>
+  // Tick chọn nhiều đơn rồi in bill một lượt (mỗi đơn một trang)
+  const boxes = [...document.querySelectorAll('[data-pick]')];
+  const all = document.querySelector('[data-pick-all]');
+  const btn = document.querySelector('[data-print-selected]');
+  const picked = () => boxes.filter((b) => b.checked).map((b) => b.value);
+  const refresh = () => {
+    const n = picked().length;
+    btn.disabled = !n;
+    btn.textContent = n ? `In ${n} bill đã chọn` : 'In bill đã chọn';
+  };
+  boxes.forEach((b) => b.addEventListener('change', refresh));
+  if (all) all.addEventListener('change', () => { boxes.forEach((b) => { b.checked = all.checked; }); refresh(); });
+  btn.addEventListener('click', () => window.open('/admin/don-hang/in?ids=' + picked().join(','), '_blank'));
+</script>
 
 <%- include('foot') %>

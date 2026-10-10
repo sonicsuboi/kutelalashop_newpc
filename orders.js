@@ -13,6 +13,18 @@ const ORDER_STATUS = {
 const PAYMENT_METHOD = { cod: 'Khi nhận hàng', bank: 'Chuyển khoản', vnpay: 'Thẻ / VNPay' };
 const PAYMENT_STATUS = { unpaid: 'Chưa thanh toán', paid: 'Đã thanh toán', failed: 'Thanh toán lỗi' };
 
+// Đơn vị vận chuyển để chọn khi giao hàng
+const CARRIERS = {
+  ghn: 'Giao Hàng Nhanh',
+  ghtk: 'Giao Hàng Tiết Kiệm',
+  vtp: 'Viettel Post',
+  vnpost: 'VNPost',
+  jt: 'J&T Express',
+  spx: 'SPX Express',
+  xe: 'Grab / Ahamove / xe ôm',
+  shop: 'Shop tự giao',
+};
+
 const orderCode = (id) => `KT${String(id).padStart(5, '0')}`;
 const orderIdFromCode = (code) => (/^KT(\d{5,9})$/.exec(code || '') ? Number(code.slice(2)) : 0);
 
@@ -79,6 +91,6 @@ async function markPaid(orderId, ref = null) {
 }
 
 module.exports = {
-  ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS,
+  ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, CARRIERS,
   orderCode, orderIdFromCode, shippingFee, OutOfStockError, createOrder, cancelOrder, markPaid,
 };

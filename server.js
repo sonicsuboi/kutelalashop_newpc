@@ -10,7 +10,7 @@ const { fold } = require('./text');
 const { syncAllMedia, syncProductMedia } = require('./media');
 const { CATEGORIES, GROUPS, groupOf, sizesOf, sizeLabel, colorsOf, stockOf, stockMap } = require('./catalog');
 const {
-  ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, shippingFee, orderCode, orderIdFromCode, OutOfStockError, createOrder, cancelOrder, markPaid,
+  ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, CARRIERS, shippingFee, orderCode, orderIdFromCode, OutOfStockError, createOrder, cancelOrder, markPaid,
 } = require('./orders');
 const vnpay = require('./vnpay');
 const { bankOf, transferQr } = require('./vietqr');
@@ -255,7 +255,12 @@ app.use('/tai-khoan', customers.router);
 
 // Trang chủ
 app.get('/', ah(async (req, res) => {
-  const featured = await db.query(`${PRODUCTS} ORDER BY created_at DESC, p.id ASC LIMIT 5`);
+  // Sản phẩm nổi bật: mỗi danh mục một mẫu (mẫu mới nhất còn hàng, hết cả thì lấy mẫu mới nhất),
+  // xếp theo thứ tự danh mục, để trang chủ thể hiện đủ các dòng hàng shop đang bán
+  const newest = await db.query(`${PRODUCTS} ORDER BY created_at DESC, p.id DESC`);
+  const featured = Object.keys(CATEGORIES)
+    .map((key) => newest.find((p) => p.category === key && p.stock_total) || newest.find((p) => p.category === key))
+    .filter(Boolean);
   // Danh mục chưa có ảnh riêng thì lấy ảnh đại diện của sản phẩm mới nhất trong danh mục đó,
   // để dòng nào rê chuột vào cũng có ảnh nền chứ không chỉ nền đen
   const covers = Object.fromEntries((await db.query(`
@@ -686,7 +691,7 @@ app.post('/tra-cuu-don', ah(async (req, res) => {
   }
   res.status(orders.length ? 200 : 404).render('order-lookup', {
     title: 'Tra cứu đơn hàng', values, orders, searched: true, full,
-    statuses: ORDER_STATUS, payments: PAYMENT_STATUS, methods: PAYMENT_METHOD, orderCode,
+    statuses: ORDER_STATUS, payments: PAYMENT_STATUS, methods: PAYMENT_METHOD, carriers: CARRIERS, orderCode,
   });
 }));
 // VNPay đưa khách quay về đây sau khi thanh toán

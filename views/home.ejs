@@ -34,9 +34,24 @@
     <h2>Sản phẩm nổi bật</h2>
     <a class="more" href="/san-pham">Xem tất cả</a>
   </div>
-  <ul class="grid grid-feature">
+  <%# Mỗi danh mục một mẫu, xếp kiểu khảm: mẫu thứ 1 và thứ 6 là ô lớn (2 cột x 2 hàng), xen hai ô chữ
+      để lưới không đều tăm tắp. Nhãn trên ảnh là tên danh mục. %>
+  <ul class="grid grid-feature grid-mosaic">
     <% featured.forEach((product, i) => { %>
-      <%- include('partials/card', { product, big: i === 0 }) %>
+      <%- include('partials/card', { product: { ...product, badge: categories[product.category] }, big: i === 0 || i === 5 }) %>
+      <% if (i === 2) { %>
+        <li class="mosaic-tile mosaic-accent" style="--photo: url('/images/mosaic-1.jpg')">
+          <span class="eyebrow">Hàng mới về mỗi tuần</span>
+          <a href="/san-pham"><b>Mẹ đẹp,<br>bé xinh.</b></a>
+          <span class="mosaic-go" aria-hidden="true">Xem sản phẩm →</span>
+        </li>
+      <% } %>
+      <% if (i === 4) { %>
+        <li class="mosaic-tile mosaic-dark" style="--photo: url('/images/mosaic-2.jpg')">
+          <span class="eyebrow">Còn nhiều mẫu khác</span>
+          <a href="/san-pham"><b>Xem tất cả<br>sản phẩm →</b></a>
+        </li>
+      <% } %>
     <% }) %>
   </ul>
 </section>

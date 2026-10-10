@@ -1,18 +1,72 @@
-<%# Bảng đơn hàng dùng ở trang tổng quan và trang danh sách đơn %>
+<%# Bảng đơn hàng dùng ở trang tổng quan và trang danh sách đơn.
+    actions = true (trang danh sách): thêm ô tick chọn, hình sản phẩm và các nút xử lý nhanh. %>
+<%
+  const actions = Boolean(locals.actions);
+  // Bước xử lý kế tiếp của đơn theo trạng thái hiện tại
+  const NEXT = { new: ['confirmed', 'Xác nhận'], shipping: ['done', 'Hoàn tất'] };
+%>
+<div class="scroll">
 <table class="table">
   <thead>
-    <tr><th>Mã đơn</th><th>Ngày đặt</th><th>Khách hàng</th><th class="num">Tổng tiền</th><th>Thanh toán</th><th>Trạng thái</th></tr>
+    <tr>
+      <% if (actions) { %><th><input type="checkbox" data-pick-all aria-label="Chọn tất cả"></th><% } %>
+      <th>Mã đơn</th>
+      <% if (actions) { %><th>Sản phẩm</th><% } %>
+      <th>Khách hàng</th><th class="num">Tổng tiền</th><th>Thanh toán</th><th>Trạng thái</th>
+      <% if (actions) { %><th>Xử lý</th><% } %>
+    </tr>
   </thead>
   <tbody>
-    <% for (const order of orders) { %>
+    <% for (const order of orders) { const items = order.items || []; %>
       <tr>
-        <td><a href="/admin/don-hang/<%= order.id %>"><b><%= admin.orderCode(order.id) %></b></a></td>
-        <td><%= order.created_at %></td>
-        <td><%= order.name %><br><span class="muted"><%= order.phone %></span></td>
+        <% if (actions) { %><td><input type="checkbox" data-pick value="<%= order.id %>" aria-label="Chọn đơn <%= admin.orderCode(order.id) %>"></td><% } %>
+        <td>
+          <a href="/admin/don-hang/<%= order.id %>"><b><%= admin.orderCode(order.id) %></b></a><br>
+          <span class="muted small"><%= admin.vnTime(order.created_at) %></span>
+        </td>
+        <% if (actions) { %>
+          <td>
+            <a class="order-thumbs" href="/admin/don-hang/<%= order.id %>" title="<%= items.map((i) => `${i.name} x${i.qty}`).join('\n') %>">
+              <% for (const item of items.slice(0, 3)) { %>
+                <% if (item.image_url) { %><img class="thumb" src="<%= item.image_url %>" alt="" loading="lazy"><% } else { %><span class="thumb thumb-empty">?</span><% } %>
+              <% } %>
+              <% if (items.length > 3) { %><span class="thumb thumb-empty">+<%= items.length - 3 %></span><% } %>
+            </a>
+            <span class="muted small"><%= items.reduce((n, i) => n + i.qty, 0) %> món</span>
+          </td>
+        <% } %>
+        <td><%= order.name %><br><a class="muted" href="tel:<%= order.phone.replace(/\s/g, '') %>"><%= order.phone %></a></td>
         <td class="num"><%= formatPrice(order.total) %></td>
         <td><%= admin.methods[order.payment_method] %><br><span class="tag pay-<%= order.payment_status %>"><%= admin.payments[order.payment_status] %></span></td>
-        <td><span class="tag st-<%= order.status %>"><%= admin.statuses[order.status] %></span></td>
+        <td>
+          <span class="tag st-<%= order.status %>"><%= admin.statuses[order.status] %></span>
+          <% if (order.carrier) { %><br><span class="muted small"><%= admin.carriers[order.carrier] %><%= order.tracking_code ? ` · ${order.tracking_code}` : '' %></span><% } %>
+        </td>
+        <% if (actions) { %>
+          <td>
+            <div class="row-actions">
+              <% if (NEXT[order.status]) { %>
+                <form action="/admin/don-hang/<%= order.id %>/trang-thai" method="post">
+                  <input type="hidden" name="status" value="<%= NEXT[order.status][0] %>">
+                  <input type="hidden" name="ve" value="ds">
+                  <button class="btn" type="submit"><%= NEXT[order.status][1] %></button>
+                </form>
+              <% } else if (order.status === 'confirmed') { %>
+                <a class="btn" href="/admin/don-hang/<%= order.id %>#giao-hang">Giao hàng</a>
+              <% } %>
+              <%# Đơn chưa thu tiền: bấm khi đã thấy tiền về tài khoản (hoặc đã thu tiền mặt) %>
+              <% if (order.payment_status !== 'paid' && order.status !== 'cancelled') { %>
+                <form action="/admin/don-hang/<%= order.id %>/da-thanh-toan" method="post" onsubmit="return confirm('Xác nhận đã nhận đủ <%= formatPrice(order.total) %> của đơn <%= admin.orderCode(order.id) %>?')">
+                  <input type="hidden" name="ve" value="ds">
+                  <button class="btn btn-light" type="submit"><%= order.payment_method === 'bank' ? 'Đã nhận chuyển khoản' : 'Đã thu tiền' %></button>
+                </form>
+              <% } %>
+              <a class="btn btn-light" href="/admin/don-hang/<%= order.id %>/in" target="_blank" rel="noopener">In bill</a>
+            </div>
+          </td>
+        <% } %>
       </tr>
     <% } %>
   </tbody>
 </table>
+</div>

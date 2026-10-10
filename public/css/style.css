@@ -1241,3 +1241,49 @@ main {
 
 .lookup-form { max-width: 520px; margin: 0 auto; }
 .lookup-note { margin: -12px 0 20px; }
+
+/* Trang chủ: lưới khảm cho phần nổi bật. Ô lớn dùng lại .grid-feature .card-big; grid-auto-flow dense
+   để các ô nhỏ và ô chữ tự lấp chỗ trống quanh ô lớn. */
+.grid-mosaic { grid-auto-flow: dense; }
+.mosaic-tile {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 12px;
+  min-height: 220px;
+  margin-bottom: 56px;
+  padding: 24px;
+}
+.mosaic-tile b { font-size: clamp(18px, 2vw, 30px); font-weight: 800; line-height: 1.15; text-transform: uppercase; }
+.mosaic-accent { background: var(--accent); }
+.mosaic-dark { color: #fff; background: var(--ink); transition: background .25s ease, color .25s ease; }
+.mosaic-dark:hover { color: var(--ink); background: var(--accent); }
+/* cả ô là vùng bấm: link phủ kín ô */
+.mosaic-tile a::after { content: ""; position: absolute; inset: 0; }
+.mosaic-tile { position: relative; }
+.mosaic-accent { transition: background .25s ease, color .25s ease; }
+.mosaic-accent:hover { color: #fff; background: var(--ink); }
+/* dòng "Xem sản phẩm →" trượt lên khi rê chuột */
+.mosaic-go { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; opacity: 0; transform: translateY(6px); transition: opacity .25s ease, transform .25s ease; }
+.mosaic-accent:hover .mosaic-go, .mosaic-accent:focus-within .mosaic-go { opacity: 1; transform: none; }
+@media (hover: none) { .mosaic-go { opacity: 1; transform: none; } }
+@media (max-width: 560px) {
+  .mosaic-tile { min-height: 160px; margin-bottom: 36px; padding: 16px; }
+}
+/* Hai ô chữ của lưới khảm có ảnh thời trang (--photo) nằm dưới chữ, phủ lớp tối để chữ trắng đọc được.
+   Ô vàng: bình thường nền vàng, rê chuột thì hiện ảnh. Ô ảnh: bình thường hiện ảnh, rê chuột thì ra nền vàng. */
+.mosaic-tile { isolation: isolate; overflow: hidden; }
+.mosaic-tile::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(to top, rgba(0, 0, 0, .78), rgba(0, 0, 0, .12) 75%),
+    var(--photo, none) center / cover no-repeat;
+  transition: opacity .35s ease;
+}
+.mosaic-accent::before { opacity: 0; }
+.mosaic-accent:hover::before, .mosaic-accent:focus-within::before { opacity: 1; }
+.mosaic-dark::before { opacity: 1; }
+.mosaic-dark:hover::before, .mosaic-dark:focus-within::before { opacity: 0; }

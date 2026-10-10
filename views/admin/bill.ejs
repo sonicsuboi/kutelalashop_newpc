@@ -10,7 +10,8 @@
     @page { size: A5; margin: 10mm; }
     * { box-sizing: border-box; }
     body { margin: 0; padding: 24px; color: #111; background: #eee; font: 13px/1.45 "Helvetica Neue", Helvetica, Arial, sans-serif; }
-    .sheet { max-width: 148mm; margin: 0 auto; padding: 10mm; background: #fff; }
+    .sheet { max-width: 148mm; margin: 0 auto 12px; padding: 10mm; background: #fff; break-after: page; }
+    .sheet:last-of-type { break-after: auto; }
     .tools { max-width: 148mm; margin: 0 auto 12px; display: flex; gap: 8px; }
     .tools button, .tools a { padding: 8px 16px; font: inherit; color: #fff; background: #111; border: 0; text-decoration: none; cursor: pointer; }
     .tools a { color: #111; background: #fff; border: 1px solid #111; }
@@ -40,9 +41,11 @@
 <body>
   <div class="tools">
     <button type="button" onclick="window.print()">In bill</button>
-    <a href="/admin/don-hang/<%= order.id %>">Quay lại đơn hàng</a>
+    <a href="<%= back %>">Quay lại</a>
   </div>
 
+  <%# Mỗi đơn một tờ; in nhiều đơn thì mỗi tờ sang một trang %>
+  <% for (const { order, items, transfer } of bills) { %>
   <div class="sheet">
     <header>
       <div>
@@ -62,6 +65,7 @@
     <p><b><%= order.name %></b> · <%= order.phone %></p>
     <p><%= order.address %></p>
     <% if (order.note) { %><p class="muted">Ghi chú: <%= order.note %></p><% } %>
+    <% if (order.carrier) { %><p class="muted">Vận chuyển: <%= admin.carriers[order.carrier] %><%= order.tracking_code ? ` · Mã vận đơn: ${order.tracking_code}` : '' %></p><% } %>
 
     <h2>Sản phẩm</h2>
     <table>
@@ -100,5 +104,6 @@
 
     <p class="thanks muted">Cảm ơn bạn đã mua hàng tại <%= shopName %>.</p>
   </div>
+  <% } %>
 </body>
 </html>

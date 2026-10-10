@@ -194,3 +194,13 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--ink); outli
 
 .bar nav .count { display: inline-block; min-width: 18px; margin-left: 6px; padding: 0 5px; font-size: 11px; line-height: 18px; text-align: center; color: var(--ink); background: var(--accent); border-radius: 9px; }
 .inline form { margin: 0; }
+
+/* Bảng đơn hàng: hình sản phẩm xếp chồng nhẹ và các nút xử lý nhanh */
+.order-thumbs { display: inline-flex; vertical-align: middle; margin-right: 8px; text-decoration: none; }
+.order-thumbs .thumb { width: 44px; height: 44px; }
+.order-thumbs .thumb + .thumb { margin-left: -10px; box-shadow: -2px 0 0 #fff; }
+.order-thumbs .thumb-empty { font-size: 12px; font-weight: 700; }
+.row-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.row-actions form { margin: 0; }
+.row-actions .btn { padding: 6px 10px; font-size: 12px; white-space: nowrap; }
+.card textarea, .card select { width: 100%; }

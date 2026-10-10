@@ -233,6 +233,11 @@ async function migrate() {
 
     -- Sản phẩm đang ẩn không hiện trên trang bán hàng; phí vận chuyển đã tính vào tổng tiền của đơn
     ALTER TABLE products ADD COLUMN IF NOT EXISTS hidden BOOLEAN NOT NULL DEFAULT false;
+    -- Giao hàng: đơn vị vận chuyển, mã vận đơn, lúc giao cho bên vận chuyển; ghi chú nội bộ của shop
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS carrier TEXT;
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS tracking_code TEXT;
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipped_at TIMESTAMP;
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS admin_note TEXT;
     -- Mã của nhà cung cấp (vd BDGĐ229), chỉ hiện trong trang quản trị để shop đặt lại hàng
     ALTER TABLE products ADD COLUMN IF NOT EXISTS supplier_code TEXT;
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_fee INTEGER NOT NULL DEFAULT 0;

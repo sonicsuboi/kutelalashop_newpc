@@ -32,6 +32,14 @@
     <% } else if (product.category === 'tui') { %>
       <path fill="none" stroke="<%= strap %>" stroke-width="<%= outline ? 4 : 9 %>" d="M112 58q38-52 76 0"/>
       <path fill="<%= upper %>" d="M84 58h132l18 60H66z"/>
+    <% } else if (product.category === 'be-trai') { %>
+      <%# áo thun cộc tay %>
+      <path fill="<%= upper %>" d="M105 30L130 20Q150 36 170 20L195 30L226 60L204 80L190 68V124H110V68L96 80L74 60Z"/>
+      <path fill="none" stroke="<%= detail %>" d="M130 20Q150 36 170 20M128 84h44"/>
+    <% } else if (product.category === 'be-gai') { %>
+      <%# váy xoè %>
+      <path fill="<%= upper %>" d="M126 16H140Q150 30 160 16H174L182 46L166 56L208 124H92L134 56L118 46Z"/>
+      <path fill="none" stroke="<%= detail %>" d="M134 56h32M112 104h76"/>
     <% } else if (product.category === 'boot') { %>
       <path fill="<%= upper %>" d="M60 18H120L122 62C150 72 220 74 262 88C272 92 272 104 268 104H60Z"/>
       <path fill="<%= sole %>" d="M56 104H270V112H100V120H56Z"/>

@@ -5,7 +5,7 @@ const crypto = require('node:crypto');
 const { promisify } = require('node:util');
 const express = require('express');
 const db = require('./db');
-const { ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, orderCode } = require('./orders');
+const { ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, CARRIERS, orderCode } = require('./orders');
 const ah = require('./async-handler');
 
 const scrypt = promisify(crypto.scrypt);
@@ -132,7 +132,7 @@ async function renderAccount(res, tab, { values, errors = {}, status = 200, save
   }
   res.status(status).render('account/profile', {
     title: { 'thong-tin': 'Tài khoản', 'don-hang': 'Đơn hàng của tôi', 'mat-khau': 'Đổi mật khẩu' }[tab],
-    tab, values: values || customer, errors, saved, orders, statuses: ORDER_STATUS, payments: PAYMENT_STATUS, methods: PAYMENT_METHOD, orderCode,
+    tab, values: values || customer, errors, saved, orders, statuses: ORDER_STATUS, payments: PAYMENT_STATUS, methods: PAYMENT_METHOD, carriers: CARRIERS, orderCode,
   });
 }
 

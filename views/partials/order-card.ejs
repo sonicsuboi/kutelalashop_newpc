@@ -37,6 +37,7 @@
   <footer>
     <div>
       <% if (!locals.hideAddress) { %><p class="muted">Giao tới: <%= order.address %></p><% } %>
+      <% if (order.carrier) { %><p class="muted">Vận chuyển: <%= carriers[order.carrier] %><%= order.tracking_code ? ` · Mã vận đơn: ${order.tracking_code}` : '' %></p><% } %>
       <p class="order-pay">
         Thanh toán: <b><%= methods[order.payment_method] %></b> ·
         <span class="order-tag pay-<%= order.payment_status %>"><%= payments[order.payment_status] %></span>
