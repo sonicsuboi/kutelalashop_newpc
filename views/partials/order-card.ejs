@@ -14,6 +14,7 @@
     </div>
     <div class="order-state">
       <span class="order-tag st-<%= order.status %>"><%= statuses[order.status] %></span>
+      <% if (order.status === 'cancelled' && order.cancel_reason) { %><p class="muted"><%= order.cancel_reason %></p><% } %>
     </div>
   </header>
 

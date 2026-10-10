@@ -204,3 +204,5 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--ink); outli
 .row-actions form { margin: 0; }
 .row-actions .btn { padding: 6px 10px; font-size: 12px; white-space: nowrap; }
 .card textarea, .card select { width: 100%; }
+
+.card input[type="text"] { width: 100%; }

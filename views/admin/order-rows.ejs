@@ -40,6 +40,7 @@
         <td><%= admin.methods[order.payment_method] %><br><span class="tag pay-<%= order.payment_status %>"><%= admin.payments[order.payment_status] %></span></td>
         <td>
           <span class="tag st-<%= order.status %>"><%= admin.statuses[order.status] %></span>
+          <% if (order.status === 'cancelled') { %><br><span class="small <%= order.cancel_stage === 'after' && !order.returned_at ? 'warn' : 'muted' %>"><%= admin.cancelLabel(order) %></span><% } %>
           <% if (order.carrier) { %><br><span class="muted small"><%= admin.carriers[order.carrier] %><%= order.tracking_code ? ` · ${order.tracking_code}` : '' %></span><% } %>
         </td>
         <% if (actions) { %>

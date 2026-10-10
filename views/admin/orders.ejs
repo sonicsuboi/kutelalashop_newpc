@@ -2,7 +2,7 @@
 <%
   // Link giữ nguyên các bộ lọc đang chọn, chỉ đổi phần truyền vào
   const link = (change, path = '/admin/don-hang') => {
-    const next = { status, tt: pay, q, ...change };
+    const next = { status, tt: pay, q, huy: cancel, ...change };
     const qs = new URLSearchParams(Object.entries(next).filter(([, v]) => v));
     return path + (qs.toString() ? '?' + qs : '');
   };
@@ -31,8 +31,14 @@
     <option value="unpaid" <%= pay === 'unpaid' ? 'selected' : '' %>>Chưa thanh toán</option>
     <option value="paid" <%= pay === 'paid' ? 'selected' : '' %>>Đã thanh toán</option>
   </select>
+  <select name="huy" aria-label="Kiểu huỷ">
+    <option value="">Mọi kiểu huỷ</option>
+    <option value="truoc" <%= cancel === 'truoc' ? 'selected' : '' %>>Huỷ trước khi giao</option>
+    <option value="sau" <%= cancel === 'sau' ? 'selected' : '' %>>Huỷ sau khi giao (hoàn hàng)</option>
+    <option value="cho-hoan" <%= cancel === 'cho-hoan' ? 'selected' : '' %>>Đang chờ nhận lại hàng</option>
+  </select>
   <button class="btn btn-light" type="submit">Lọc</button>
-  <% if (q || pay) { %><a href="<%= link({ q: '', tt: '' }) %>">Bỏ lọc</a><% } %>
+  <% if (q || pay || cancel) { %><a href="<%= link({ q: '', tt: '', huy: '' }) %>">Bỏ lọc</a><% } %>
 </form>
 
 <% if (orders.length) { %>

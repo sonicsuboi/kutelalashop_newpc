@@ -101,7 +101,18 @@
     <section class="card">
       <h2>Xử lý đơn</h2>
       <% if (order.status === 'cancelled') { %>
-        <p class="muted">Đơn đã huỷ, hàng đã được cộng lại vào kho.</p>
+        <p><b><%= admin.cancelLabel(order) %></b><% if (order.cancelled_at) { %> · huỷ lúc <%= admin.vnTime(order.cancelled_at) %><% } %></p>
+        <% if (order.cancel_reason) { %><p class="muted">Lý do: <%= order.cancel_reason %></p><% } %>
+        <% if (order.cancel_stage !== 'after') { %>
+          <p class="muted">Hàng chưa rời shop nên đã được cộng lại vào kho.</p>
+        <% } else if (order.returned_at) { %>
+          <p class="muted">Đã nhận lại hàng lúc <%= admin.vnTime(order.returned_at) %>, hàng đã cộng vào kho.</p>
+        <% } else { %>
+          <p class="error">Hàng đang trên đường hoàn về, <b>chưa cộng vào kho</b>. Khi nhận lại và kiểm hàng xong thì bấm nút dưới.</p>
+          <form action="/admin/don-hang/<%= order.id %>/nhan-hang-hoan" method="post" onsubmit="return confirm('Xác nhận đã nhận lại hàng và cộng vào kho?')">
+            <button class="btn" type="submit">Đã nhận lại hàng, cộng vào kho</button>
+          </form>
+        <% } %>
       <% } else { %>
         <form class="inline" action="/admin/don-hang/<%= order.id %>/trang-thai" method="post">
           <select name="status" aria-label="Trạng thái đơn">
@@ -111,8 +122,21 @@
           </select>
           <button class="btn" type="submit">Cập nhật</button>
         </form>
-        <form action="/admin/don-hang/<%= order.id %>/huy" method="post" onsubmit="return confirm('Huỷ đơn này và trả hàng về kho?')">
-          <button class="btn btn-danger" type="submit">Huỷ đơn, trả hàng về kho</button>
+        <% const stage = admin.cancelStageOf(order); %>
+        <form action="/admin/don-hang/<%= order.id %>/huy" method="post"
+              onsubmit="return confirm('<%= stage === 'after' ? 'Huỷ đơn đã giao cho vận chuyển? Hàng chỉ cộng lại kho khi bạn xác nhận đã nhận hàng hoàn.' : 'Huỷ đơn này và trả hàng về kho?' %>')">
+          <h2><%= stage === 'after' ? 'Huỷ sau khi giao (hoàn hàng)' : 'Huỷ trước khi giao' %></h2>
+          <label class="field">
+            <span>Lý do</span>
+            <select name="reason" required>
+              <% for (const r of admin.cancelReasons[stage]) { %><option><%= r %></option><% } %>
+            </select>
+          </label>
+          <label class="field">
+            <span>Ghi thêm (không bắt buộc)</span>
+            <input type="text" name="detail" maxlength="200">
+          </label>
+          <button class="btn btn-danger" type="submit"><%= stage === 'after' ? 'Huỷ đơn, chờ hàng hoàn về' : 'Huỷ đơn, trả hàng về kho' %></button>
         </form>
       <% } %>
     </section>

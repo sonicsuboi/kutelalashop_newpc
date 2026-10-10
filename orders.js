@@ -70,17 +70,45 @@ async function createOrder(lines, customer, paymentMethod) {
   });
 }
 
-// Huỷ đơn và trả hàng về kho. Đơn đã huỷ thì không làm gì (không cộng kho hai lần).
-async function cancelOrder(orderId, paymentStatus = null) {
+// Hai kiểu huỷ đơn (cột cancel_stage):
+//   before: huỷ trước khi giao cho bên vận chuyển, hàng còn ở shop nên cộng lại kho ngay.
+//   after:  huỷ sau khi đã giao cho bên vận chuyển (khách không nhận, giao thất bại...). Hàng đang trên
+//           đường hoàn về nên CHƯA cộng kho; khi shop nhận lại hàng thì gọi receiveReturn().
+const CANCEL_REASONS = {
+  before: ['Khách đổi ý', 'Không liên lạc được khách', 'Hết hàng', 'Trùng đơn / đặt nhầm', 'Lý do khác'],
+  after: ['Khách không nhận hàng', 'Giao thất bại', 'Hàng lỗi / khách trả lại', 'Lý do khác'],
+};
+const cancelStageOf = (order) => (['shipping', 'done'].includes(order.status) ? 'after' : 'before');
+
+async function restoreStock(tx, orderId) {
+  for (const item of await tx.query('SELECT product_id, color_id, size, qty FROM order_items WHERE order_id = ?', [orderId])) {
+    await changeStock(tx, item.product_id, item.color_id, item.size, item.qty);
+  }
+}
+
+// Huỷ đơn. Đơn đã huỷ thì không làm gì (không cộng kho hai lần).
+async function cancelOrder(orderId, paymentStatus = null, reason = null) {
   const order = await db.one('SELECT status FROM orders WHERE id = ?', [orderId]);
   if (!order || order.status === 'cancelled') return false;
+  const stage = cancelStageOf(order);
   return db.withTransaction(async (tx) => {
-    for (const item of await tx.query('SELECT product_id, color_id, size, qty FROM order_items WHERE order_id = ?', [orderId])) {
-      await changeStock(tx, item.product_id, item.color_id, item.size, item.qty);
-    }
-    await tx.run("UPDATE orders SET status = 'cancelled', payment_status = COALESCE(?, payment_status) WHERE id = ?",
-      [paymentStatus, orderId]);
+    if (stage === 'before') await restoreStock(tx, orderId);
+    await tx.run(`
+      UPDATE orders SET status = 'cancelled', payment_status = COALESCE(?, payment_status),
+        cancel_stage = ?, cancel_reason = ?, cancelled_at = (now() AT TIME ZONE 'utc')
+      WHERE id = ?`, [paymentStatus, stage, reason, orderId]);
     return true;
+  });
+}
+
+// Shop đã nhận lại hàng hoàn của đơn huỷ sau khi giao: cộng hàng vào kho (chỉ một lần)
+async function receiveReturn(orderId) {
+  return db.withTransaction(async (tx) => {
+    const { rowCount } = await tx.run(`
+      UPDATE orders SET returned_at = (now() AT TIME ZONE 'utc')
+      WHERE id = ? AND status = 'cancelled' AND cancel_stage = 'after' AND returned_at IS NULL`, [orderId]);
+    if (rowCount) await restoreStock(tx, orderId);
+    return Boolean(rowCount);
   });
 }
 
@@ -92,5 +120,6 @@ async function markPaid(orderId, ref = null) {
 
 module.exports = {
   ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, CARRIERS,
-  orderCode, orderIdFromCode, shippingFee, OutOfStockError, createOrder, cancelOrder, markPaid,
+  CANCEL_REASONS, cancelStageOf,
+  orderCode, orderIdFromCode, shippingFee, OutOfStockError, createOrder, cancelOrder, receiveReturn, markPaid,
 };

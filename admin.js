@@ -7,7 +7,10 @@ const db = require('./db');
 const { fold } = require('./text');
 const { retailPrice } = require('./pricing');
 const { CATEGORIES, GROUPS, CODE_PREFIXES, nextCode, sizesOf, colorsOf, variantsOf, stockMap, setStock } = require('./catalog');
-const { ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, CARRIERS, orderCode, cancelOrder, markPaid } = require('./orders');
+const {
+  ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, CARRIERS, CANCEL_REASONS, cancelStageOf,
+  orderCode, cancelOrder, receiveReturn, markPaid,
+} = require('./orders');
 const { syncProductMedia, prefixOf } = require('./media');
 const storage = require('./storage');
 const { saveSite } = require('./site');
@@ -45,6 +48,13 @@ function isLocked(ip) {
   return Boolean(f && f.count >= 5 && f.until >= Date.now());
 }
 
+// Nhãn của đơn đã huỷ theo kiểu huỷ: trước khi giao, hoặc sau khi giao (đang chờ hàng hoàn / đã nhận lại)
+function cancelLabel(order) {
+  if (order.status !== 'cancelled') return '';
+  if (order.cancel_stage !== 'after') return 'Huỷ trước khi giao';
+  return order.returned_at ? 'Hoàn hàng: đã nhận lại' : 'Hoàn hàng: chờ nhận lại';
+}
+
 // created_at lưu giờ UTC dạng "YYYY-MM-DD HH:MI:SS"; hiện theo giờ Việt Nam "DD/MM/YYYY HH:MI"
 function vnTime(utc) {
   if (!utc) return '';
@@ -69,7 +79,7 @@ router.use((req, res, next) => {
   res.set('Cache-Control', 'no-store');
   res.locals.admin = {
     statuses: ORDER_STATUS, methods: PAYMENT_METHOD, payments: PAYMENT_STATUS,
-    categories: CATEGORIES, groups: GROUPS, banks: BANKS, carriers: CARRIERS, vnTime, codePrefixes: CODE_PREFIXES, orderCode, sourceLabel, section: req.path.split('/')[1] || '',
+    categories: CATEGORIES, groups: GROUPS, banks: BANKS, carriers: CARRIERS, vnTime, cancelReasons: CANCEL_REASONS, cancelStageOf, cancelLabel, codePrefixes: CODE_PREFIXES, orderCode, sourceLabel, section: req.path.split('/')[1] || '',
   };
   next();
 });
@@ -137,6 +147,7 @@ router.get('/', ah(async (req, res) => {
       shipping: await one("SELECT COUNT(*)::int AS n FROM orders WHERE status IN ('confirmed', 'shipping')"),
       refund: await one("SELECT COUNT(*)::int AS n FROM orders WHERE status = 'cancelled' AND payment_status = 'paid'"),
       messages: await one('SELECT COUNT(*)::int AS n FROM messages WHERE NOT done'),
+      returns: await one("SELECT COUNT(*)::int AS n FROM orders WHERE status = 'cancelled' AND cancel_stage = 'after' AND returned_at IS NULL"),
       soldOut: products.filter((p) => !p.stock_total).length,
       noPhoto: products.filter((p) => !p.media_count).length,
     },
@@ -173,11 +184,17 @@ async function attachItems(orders) {
 async function filterOrders(query) {
   const status = Object.hasOwn(ORDER_STATUS, query.status) ? query.status : '';
   const pay = ['unpaid', 'paid'].includes(query.tt) ? query.tt : '';
+  const cancel = ['truoc', 'sau', 'cho-hoan'].includes(query.huy) ? query.huy : '';
   const q = text(query.q).slice(0, 80);
   const digits = (s) => String(s || '').replace(/\D/g, '');
   let orders = await db.query('SELECT * FROM orders ORDER BY id DESC LIMIT 2000');
   if (status) orders = orders.filter((o) => o.status === status);
   if (pay) orders = orders.filter((o) => (o.payment_status === 'paid') === (pay === 'paid'));
+  // kiểu huỷ: trước khi giao, sau khi giao, hoặc riêng các đơn đang chờ hàng hoàn về
+  if (cancel) {
+    orders = orders.filter((o) => o.status === 'cancelled' && (cancel === 'truoc' ? o.cancel_stage !== 'after'
+      : o.cancel_stage === 'after' && (cancel === 'sau' || !o.returned_at)));
+  }
   if (q) {
     const words = fold(q).split(/\s+/).filter(Boolean);
     orders = orders.filter((o) => {
@@ -185,15 +202,15 @@ async function filterOrders(query) {
       return words.every((w) => hay.includes(w));
     });
   }
-  return { orders, status, pay, q };
+  return { orders, status, pay, q, cancel };
 }
 
 router.get('/don-hang', ah(async (req, res) => {
-  const { orders, status, pay, q } = await filterOrders(req.query);
+  const { orders, status, pay, q, cancel } = await filterOrders(req.query);
   const counts = Object.fromEntries(
     (await db.query('SELECT status, COUNT(*)::int AS n FROM orders GROUP BY status')).map((r) => [r.status, r.n]));
   res.render('admin/orders', {
-    title: 'Đơn hàng', orders: await attachItems(orders.slice(0, 300)), status, pay, q, counts,
+    title: 'Đơn hàng', orders: await attachItems(orders.slice(0, 300)), status, pay, q, cancel, counts,
     total: orders.reduce((sum, o) => sum + (o.status === 'cancelled' ? 0 : o.total), 0),
   });
 }));
@@ -204,11 +221,11 @@ router.get('/don-hang/xuat.csv', ah(async (req, res) => {
   await attachItems(orders);
   const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const head = ['Mã đơn', 'Ngày đặt', 'Khách hàng', 'Điện thoại', 'Địa chỉ', 'Sản phẩm', 'Phí vận chuyển', 'Tổng tiền',
-    'Hình thức', 'Thanh toán', 'Trạng thái', 'Đơn vị vận chuyển', 'Mã vận đơn', 'Ghi chú của khách', 'Ghi chú của shop'];
+    'Hình thức', 'Thanh toán', 'Trạng thái', 'Kiểu huỷ', 'Lý do huỷ', 'Đơn vị vận chuyển', 'Mã vận đơn', 'Ghi chú của khách', 'Ghi chú của shop'];
   const lines = orders.map((o) => [
     orderCode(o.id), vnTime(o.created_at), o.name, o.phone, o.address,
     o.items.map((i) => `${i.name}${i.color ? ` - ${i.color}` : ''}${i.size ? ` - size ${i.size_label || i.size}` : ''} x${i.qty}`).join('; '),
-    o.shipping_fee, o.total, PAYMENT_METHOD[o.payment_method], PAYMENT_STATUS[o.payment_status], ORDER_STATUS[o.status],
+    o.shipping_fee, o.total, PAYMENT_METHOD[o.payment_method], PAYMENT_STATUS[o.payment_status], ORDER_STATUS[o.status], cancelLabel(o), o.cancel_reason || '',
     CARRIERS[o.carrier] || '', o.tracking_code || '', o.note || '', o.admin_note || '',
   ].map(cell).join(','));
   res.set('Content-Disposition', 'attachment; filename="don-hang.csv"');
@@ -301,8 +318,18 @@ router.post('/don-hang/:id(\\d+)/ghi-chu', ah(async (req, res, next) => {
 router.post('/don-hang/:id(\\d+)/huy', ah(async (req, res, next) => {
   const order = await getOrder(req.params.id);
   if (!order) return next();
-  await cancelOrder(order.id);
+  const reasons = CANCEL_REASONS[cancelStageOf(order)];
+  const reason = [reasons.includes(req.body.reason) ? req.body.reason : '', text(req.body.detail).slice(0, 200)].filter(Boolean).join(': ');
+  await cancelOrder(order.id, null, reason || null);
   res.redirect(`/admin/don-hang/${order.id}`);
+}));
+
+// Shop đã nhận lại hàng hoàn của đơn huỷ sau khi giao: cộng hàng vào kho
+router.post('/don-hang/:id(\\d+)/nhan-hang-hoan', ah(async (req, res, next) => {
+  const order = await getOrder(req.params.id);
+  if (!order) return next();
+  await receiveReturn(order.id);
+  res.redirect(`/admin/don-hang/${order.id}?ok=1`);
 }));
 
 router.post('/don-hang/:id(\\d+)/da-thanh-toan', ah(async (req, res, next) => {
