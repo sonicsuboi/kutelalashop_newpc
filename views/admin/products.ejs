@@ -5,6 +5,8 @@
   <a class="btn" href="/admin/san-pham/moi">Thêm sản phẩm</a>
 </div>
 
+<% if (deleted) { %><p class="notice ok" role="status">Đã xoá sản phẩm.</p><% } %>
+
 <form class="inline" action="/admin/san-pham" method="get">
   <div class="suggest-box">
     <input type="search" name="q" value="<%= q %>" placeholder="Gõ tên hoặc mã để tìm" aria-label="Tìm sản phẩm" autocomplete="off"
@@ -24,7 +26,7 @@
         <tr data-row="<%= `${p.name} ${p.code || ''}` %>" data-name="<%= p.name %>" data-code="<%= p.code || '' %>" data-href="/admin/san-pham/<%= p.id %>" data-img="<%= p.image_url || '' %>">
           <td class="thumb-cell"><a href="/admin/san-pham/<%= p.id %>" tabindex="-1" aria-hidden="true"><% if (p.image_url) { %><img class="thumb" src="<%= p.image_url %>" alt="" loading="lazy"><% } else { %><span class="thumb thumb-empty">Chưa có</span><% } %></a></td>
           <td><%= p.code || '—' %></td>
-          <td><a href="/admin/san-pham/<%= p.id %>"><b><%= p.name %></b></a></td>
+          <td><a href="/admin/san-pham/<%= p.id %>"><b><%= p.name %></b></a><% if (p.hidden) { %> <span class="tag">Đang ẩn</span><% } %></td>
           <td><%= admin.categories[p.category] || p.category %></td>
           <td class="num"><%= p.cost === null ? '—' : formatPrice(p.cost) %></td>
           <td class="num"><%= formatPrice(p.price) %></td>

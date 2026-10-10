@@ -50,7 +50,8 @@ const PRODUCT_ROWS = `
     (SELECT COUNT(*) FROM product_images i WHERE i.product_id = p.id)::int AS media_count,
     (SELECT COUNT(*) FROM visits v WHERE v.product_id = p.id)::int AS view_count,
     (SELECT COUNT(*) FROM favorites f WHERE f.product_id = p.id)::int AS fav_count,
-    (SELECT COUNT(*) FROM reviews r WHERE r.product_id = p.id)::int AS review_count
+    (SELECT COUNT(*) FROM reviews r WHERE r.product_id = p.id)::int AS review_count,
+    (SELECT COUNT(*) FROM order_items o WHERE o.product_id = p.id)::int AS order_count
   FROM products p`;
 const getProduct = (id) => db.one(`${PRODUCT_ROWS} WHERE p.id = ?`, [Number(id)]);
 
@@ -216,7 +217,7 @@ router.get('/san-pham', ah(async (req, res) => {
   // khớp khi tên hoặc mã có đủ mọi từ đã gõ, giống cách lọc ngay trên trang
   const words = fold(q).split(/\s+/).filter(Boolean);
   if (words.length) products = products.filter((p) => words.every((w) => fold(`${p.name} ${p.code || ''}`).includes(w)));
-  res.render('admin/products', { title: 'Kho sản phẩm', products, q });
+  res.render('admin/products', { title: 'Kho sản phẩm', products, q, deleted: req.query.xoa === '1' });
 }));
 
 // Đọc và kiểm tra các ô chung của form sản phẩm
@@ -280,6 +281,7 @@ async function renderProduct(res, product, { errors = {}, status = 200, saved = 
     stock: await stockMap(db, product, colors),
     folder: product.code ? prefixOf(product) : '',
     media: await db.query("SELECT url, kind FROM product_images WHERE product_id = ? ORDER BY (kind = 'video') DESC, sort, id", [product.id]),
+    deleteBlocked: res.req.query.loi === 'co-don',
     reviews: await db.query(`
       SELECT r.id, r.rating, r.comment, r.created_at, c.name, c.phone
       FROM reviews r JOIN customers c ON c.id = r.customer_id WHERE r.product_id = ? ORDER BY r.id DESC`, [product.id]),
@@ -379,6 +381,44 @@ router.post('/san-pham/:id(\\d+)/xoa-file', ah(async (req, res, next) => {
   if (UPLOAD_TYPES[path.extname(name).toLowerCase()]) await storage.remove([prefixOf(product) + name]);
   await syncProductMedia(await getProduct(product.id));
   res.redirect(`/admin/san-pham/${product.id}#anh`);
+}));
+
+// Ẩn / hiện lại sản phẩm trên trang bán hàng (dữ liệu, ảnh và tồn kho vẫn giữ nguyên)
+router.post('/san-pham/:id(\\d+)/an', ah(async (req, res) => {
+  await db.run('UPDATE products SET hidden = NOT hidden WHERE id = ?', [Number(req.params.id)]);
+  res.redirect(`/admin/san-pham/${req.params.id}`);
+}));
+
+// Xoá hẳn sản phẩm cùng ảnh, màu, tồn kho. Sản phẩm đã có trong đơn hàng thì không xoá (chỉ ẩn được),
+// để các đơn cũ vẫn mở ra xem lại được.
+router.post('/san-pham/:id(\\d+)/xoa', ah(async (req, res, next) => {
+  const product = await getProduct(req.params.id);
+  if (!product) return next();
+  if (product.order_count) return res.redirect(`/admin/san-pham/${product.id}?loi=co-don`);
+  if (product.code) {
+    const prefix = prefixOf(product);
+    const files = await storage.list(prefix);
+    if (files.length) await storage.remove(files.map((f) => prefix + f));
+  }
+  await db.withTransaction(async (tx) => {
+    for (const table of ['product_images', 'stock', 'product_colors', 'favorites', 'reviews']) {
+      await tx.run(`DELETE FROM ${table} WHERE product_id = ?`, [product.id]);
+    }
+    await tx.run('DELETE FROM product_links WHERE product_id = ? OR linked_id = ?', [product.id, product.id]);
+    await tx.run('UPDATE visits SET product_id = NULL WHERE product_id = ?', [product.id]);
+    await tx.run('DELETE FROM products WHERE id = ?', [product.id]);
+  });
+  res.redirect('/admin/san-pham?xoa=1');
+}));
+
+// Số đơn mới và tin nhắn chưa trả lời, cho huy hiệu trên menu và chuông báo đơn mới (views/admin/foot.ejs)
+router.get('/dem', ah(async (req, res) => {
+  const row = await db.one(`
+    SELECT (SELECT COUNT(*) FROM orders WHERE status = 'new')::int AS orders,
+      (SELECT COUNT(*) FROM messages WHERE NOT done)::int AS messages,
+      (SELECT COALESCE(MAX(id), 0) FROM orders)::int AS last_order,
+      (SELECT COALESCE(MAX(id), 0) FROM messages)::int AS last_message`);
+  res.json(row);
 }));
 
 // Xoá một đánh giá không phù hợp
@@ -562,6 +602,8 @@ router.post('/thong-tin', ah(async (req, res) => {
     description: text(req.body.description).slice(0, 200),
     zalo: /^0\d{9,10}$/.test(zaloPhone) ? `https://zalo.me/${zaloPhone}` : zalo,
     facebook: /^[A-Za-z0-9.]{3,60}$/.test(facebook) ? `https://m.me/${facebook}` : facebook,
+    ship_fee: String(Math.min(int(req.body.ship_fee) || 0, 1000000)),
+    ship_free_from: String(int(req.body.ship_free_from) || 0),
     bank_bin: Object.hasOwn(BANKS, req.body.bank_bin) ? req.body.bank_bin : '',
     bank_account: text(req.body.bank_account).replace(/[\s.-]/g, '').slice(0, 24),
     bank_holder: text(req.body.bank_holder).slice(0, 80),

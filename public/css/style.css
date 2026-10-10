@@ -1234,3 +1234,7 @@ main {
 .order-tag.pay-paid { color: #fff; background: #1d6b3a; border-color: #1d6b3a; }
 .order-tag.pay-failed { color: #fff; background: #b3261e; border-color: #b3261e; }
 .order-card footer .text-btn { display: inline-block; margin-top: 8px; }
+/* Giỏ hàng: tạm tính và phí vận chuyển phía trên tổng cộng */
+.cart-sum { display: flex; justify-content: space-between; padding-top: 14px; font-size: 13px; }
+.cart-sum-note { margin-top: 6px; font-size: 12px; color: var(--muted); text-align: right; }
+.order-sums { text-align: right; }

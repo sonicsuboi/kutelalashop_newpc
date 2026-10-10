@@ -24,7 +24,7 @@
           </tr>
         <% } %>
       </tbody>
-      <tfoot><tr><th colspan="5">Tổng cộng</th><th class="num"><%= formatPrice(order.total) %></th></tr></tfoot>
+      <tfoot><% if (order.shipping_fee) { %><tr><td colspan="5">Phí vận chuyển</td><td class="num"><%= formatPrice(order.shipping_fee) %></td></tr><% } %><tr><th colspan="5">Tổng cộng</th><th class="num"><%= formatPrice(order.total) %></th></tr></tfoot>
     </table>
   </section>
 

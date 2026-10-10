@@ -191,3 +191,6 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--ink); outli
 .low li:last-child { border-bottom: 0; }
 .low a { text-decoration: none; }
 .low a:hover { text-decoration: underline; }
+
+.bar nav .count { display: inline-block; min-width: 18px; margin-left: 6px; padding: 0 5px; font-size: 11px; line-height: 18px; text-align: center; color: var(--ink); background: var(--accent); border-radius: 9px; }
+.inline form { margin: 0; }

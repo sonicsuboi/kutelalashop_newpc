@@ -10,7 +10,7 @@ const { fold } = require('./text');
 const { syncAllMedia, syncProductMedia } = require('./media');
 const { CATEGORIES, GROUPS, groupOf, sizesOf, sizeLabel, colorsOf, stockOf, stockMap } = require('./catalog');
 const {
-  ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, orderCode, orderIdFromCode, OutOfStockError, createOrder, cancelOrder, markPaid,
+  ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, shippingFee, orderCode, orderIdFromCode, OutOfStockError, createOrder, cancelOrder, markPaid,
 } = require('./orders');
 const vnpay = require('./vnpay');
 const { bankOf, transferQr } = require('./vietqr');
@@ -30,12 +30,13 @@ const SORTS = {
   price_desc: { label: 'Giá giảm dần', sql: 'price DESC' },
 };
 
+// Sản phẩm đang ẩn (hidden) không xuất hiện ở bất kỳ trang bán hàng nào.
 // Mọi truy vấn sản phẩm đều kèm số màu (đếm từ product_colors) và tổng số lượng còn trong kho
 const PRODUCTS = `
   SELECT p.*,
     (SELECT COUNT(*) FROM product_colors c WHERE c.product_id = p.id)::int AS color_count,
     (SELECT COALESCE(SUM(qty), 0) FROM stock s WHERE s.product_id = p.id)::int AS stock_total
-  FROM products p`;
+  FROM (SELECT * FROM products WHERE NOT hidden) p`;
 
 // Ảnh nền trang chủ: bỏ ảnh tên hero.jpg (banner), story.jpg (khối "Về shop") hoặc
 // store.jpg (ô "Thử giày tại cửa hàng") vào public/images là tự dùng; cũng nhận
@@ -112,11 +113,15 @@ async function cartLines(items) {
 
 async function renderCart(req, res, { values = {}, errors = {}, status = 200 } = {}) {
   const lines = await cartLines(readCart(req));
-  const { customer } = res.locals;
+  const { customer, site } = res.locals;
+  const subtotal = lines.reduce((sum, line) => sum + line.subtotal, 0);
+  const shipping = shippingFee(site, subtotal);
   res.status(status).render('cart', {
     title: 'Giỏ hàng',
     lines,
-    total: lines.reduce((sum, line) => sum + line.subtotal, 0),
+    subtotal,
+    shipping,
+    total: subtotal + shipping,
     // khách đã đăng nhập thì điền sẵn thông tin đã lưu
     values: {
       name: customer ? customer.name : '', phone: customer ? customer.phone : '',
@@ -158,7 +163,7 @@ app.use(ah(async (req, res, next) => {
   res.locals.shopName = res.locals.site.name;
   // Chỉ hiện những danh mục đang có sản phẩm
   const counts = {};
-  for (const row of await db.query('SELECT category, COUNT(*)::int AS n FROM products GROUP BY category')) {
+  for (const row of await db.query('SELECT category, COUNT(*)::int AS n FROM products WHERE NOT hidden GROUP BY category')) {
     counts[row.category] = row.n;
   }
   res.locals.categoryCounts = counts;
@@ -228,7 +233,7 @@ app.get('/sitemap.xml', ah(async (req, res) => {
     '/', '/san-pham',
     ...res.locals.groups.filter((g) => g.categories.length > 1).map((g) => g.href),
     ...Object.keys(res.locals.categories).map((key) => `/san-pham?loai=${key}`),
-    ...(await db.query('SELECT slug FROM products ORDER BY id')).map((p) => `/san-pham/${p.slug}`),
+    ...(await db.query('SELECT slug FROM products WHERE NOT hidden ORDER BY id')).map((p) => `/san-pham/${p.slug}`),
     '/gioi-thieu', '/cua-hang', '/lien-he',
     ...Object.keys(supportPages).map((slug) => `/ho-tro/${slug}`),
   ];
@@ -254,7 +259,7 @@ app.get('/', ah(async (req, res) => {
   // để dòng nào rê chuột vào cũng có ảnh nền chứ không chỉ nền đen
   const covers = Object.fromEntries((await db.query(`
     SELECT DISTINCT ON (category) category, image_url FROM products
-    WHERE image_url IS NOT NULL ORDER BY category, created_at DESC, id DESC`)).map((r) => [r.category, r.image_url]));
+    WHERE image_url IS NOT NULL AND NOT hidden ORDER BY category, created_at DESC, id DESC`)).map((r) => [r.category, r.image_url]));
   const { site, seo } = res.locals;
   seo.title = `${site.name} | Giày dép, túi xách, kính mát nữ`;
   seo.jsonLd = {
@@ -541,7 +546,7 @@ app.post('/gio-hang/them', ah(async (req, res) => {
   // nút "Thêm vào giỏ" gửi ngầm thì trả JSON để trang không phải chuyển đi
   const wantsJson = (req.get('accept') || '').includes('application/json');
   const fail = (path, message) => (wantsJson ? res.status(400).json({ error: message }) : res.redirect(path));
-  const product = await db.one('SELECT * FROM products WHERE id = ?', [parseInt(req.body.product_id, 10) || 0]);
+  const product = await db.one('SELECT * FROM products WHERE id = ? AND NOT hidden', [parseInt(req.body.product_id, 10) || 0]);
   if (!product) return fail('/san-pham', 'Không tìm thấy sản phẩm.');
 
   const sizes = sizesOf(product);
@@ -603,7 +608,8 @@ app.post('/gio-hang/dat-hang', ah(async (req, res) => {
   const { customer } = res.locals;
   let order;
   try {
-    order = await createOrder(lines, { ...values, customerId: customer && customer.id, source: req.source }, values.payment);
+    const shipping = shippingFee(res.locals.site, lines.reduce((sum, line) => sum + line.subtotal, 0));
+    order = await createOrder(lines, { ...values, customerId: customer && customer.id, source: req.source, shippingFee: shipping }, values.payment);
   } catch (err) {
     if (!(err instanceof OutOfStockError)) throw err;
     const stock = err.left

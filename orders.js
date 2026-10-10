@@ -16,6 +16,13 @@ const PAYMENT_STATUS = { unpaid: 'Chưa thanh toán', paid: 'Đã thanh toán', 
 const orderCode = (id) => `KT${String(id).padStart(5, '0')}`;
 const orderIdFromCode = (code) => (/^KT(\d{5,9})$/.exec(code || '') ? Number(code.slice(2)) : 0);
 
+// Phí vận chuyển của một đơn theo cài đặt ở trang quản trị: phí cố định, miễn phí khi tiền hàng đạt mức ship_free_from
+function shippingFee(site, subtotal) {
+  const fee = Number(site.ship_fee) || 0;
+  const freeFrom = Number(site.ship_free_from) || 0;
+  return fee && !(freeFrom && subtotal >= freeFrom) ? fee : 0;
+}
+
 class OutOfStockError extends Error {
   constructor(line, left) {
     super('Hết hàng');
@@ -27,16 +34,17 @@ class OutOfStockError extends Error {
 // lines: kết quả cartLines() ở server.js. customer: thông tin nhận hàng, kèm customerId (khách đã
 // đăng nhập) và source (kênh đưa khách tới web) nếu có. Ném OutOfStockError nếu có dòng vượt quá số còn trong kho.
 async function createOrder(lines, customer, paymentMethod) {
-  const total = lines.reduce((sum, line) => sum + line.subtotal, 0);
+  const shipping = customer.shippingFee || 0;
+  const total = lines.reduce((sum, line) => sum + line.subtotal, 0) + shipping;
   return db.withTransaction(async (tx) => {
     for (const line of lines) {
       const left = await stockOf(tx, line.product.id, line.colorId, line.size);
       if (left < line.qty) throw new OutOfStockError(line, left);
     }
     const { id: orderId } = await tx.one(
-      `INSERT INTO orders (name, phone, address, note, total, payment_method, customer_id, source)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
-      [customer.name, customer.phone, customer.address, customer.note, total, paymentMethod,
+      `INSERT INTO orders (name, phone, address, note, total, shipping_fee, payment_method, customer_id, source)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+      [customer.name, customer.phone, customer.address, customer.note, total, shipping, paymentMethod,
         customer.customerId || null, customer.source || null],
     );
     for (const line of lines) {
@@ -72,5 +80,5 @@ async function markPaid(orderId, ref = null) {
 
 module.exports = {
   ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS,
-  orderCode, orderIdFromCode, OutOfStockError, createOrder, cancelOrder, markPaid,
+  orderCode, orderIdFromCode, shippingFee, OutOfStockError, createOrder, cancelOrder, markPaid,
 };

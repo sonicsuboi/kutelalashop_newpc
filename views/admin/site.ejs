@@ -39,6 +39,20 @@
     </label>
   </div>
 
+  <h2>Phí vận chuyển</h2>
+  <div class="row">
+    <label class="field">
+      <span>Phí vận chuyển mỗi đơn (đồng)</span>
+      <input type="number" name="ship_fee" value="<%= Number(values.ship_fee) || 0 %>" min="0" step="1000">
+      <small>Cộng vào tổng tiền mỗi đơn. Để 0 là không tính phí.</small>
+    </label>
+    <label class="field">
+      <span>Miễn phí cho đơn từ (đồng)</span>
+      <input type="number" name="ship_free_from" value="<%= Number(values.ship_free_from) || 0 %>" min="0" step="1000">
+      <small>Tiền hàng đạt mức này thì không tính phí. Để 0 là luôn tính phí.</small>
+    </label>
+  </div>
+
   <h2>Tài khoản nhận chuyển khoản</h2>
   <p class="muted">Khai báo đủ thì giỏ hàng có lựa chọn “Chuyển khoản ngân hàng” và bill in kèm mã QR (khách quét là có sẵn số tiền và mã đơn). Để trống thì không dùng.</p>
   <div class="row">

@@ -1,3 +1,45 @@
   </main>
+  <% if (!locals.bare) { %>
+    <script>
+      // Huy hiệu số đơn mới / tin nhắn chưa trả lời trên menu, kiểm tra lại mỗi 30 giây.
+      // Có đơn hoặc tin nhắn mới trong lúc trang đang mở thì kêu một tiếng và đổi tiêu đề tab.
+      (() => {
+        const title = document.title;
+        const seen = { order: Number(sessionStorage.getItem('lastOrder')) || 0, message: Number(sessionStorage.getItem('lastMessage')) || 0 };
+        const beep = () => {
+          try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator(); const gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.frequency.value = 880; gain.gain.value = 0.15;
+            osc.start(); osc.stop(ctx.currentTime + 0.35);
+          } catch {}
+        };
+        async function check() {
+          let d;
+          try { d = await (await fetch('/admin/dem', { headers: { Accept: 'application/json' } })).json(); } catch { return; }
+          for (const key of ['orders', 'messages']) {
+            const el = document.querySelector(`[data-count="${key}"]`);
+            if (el) { el.textContent = d[key]; el.hidden = !d[key]; }
+          }
+          const news = [];
+          if (seen.order && d.last_order > seen.order) news.push('đơn hàng mới');
+          if (seen.message && d.last_message > seen.message) news.push('tin nhắn mới');
+          seen.order = d.last_order; seen.message = d.last_message;
+          sessionStorage.setItem('lastOrder', seen.order); sessionStorage.setItem('lastMessage', seen.message);
+          if (news.length) {
+            beep();
+            document.title = `● Có ${news.join(' và ')} · ${title}`;
+            if (window.Notification && Notification.permission === 'granted') new Notification(`Có ${news.join(' và ')}`, { body: 'Mở trang quản trị để xem.' });
+          }
+        }
+        window.addEventListener('focus', () => { document.title = title; });
+        // xin quyền hiện thông báo của trình duyệt ở lần bấm đầu tiên (trình duyệt không cho xin tự động)
+        document.addEventListener('click', () => { if (window.Notification && Notification.permission === 'default') Notification.requestPermission(); }, { once: true });
+        check();
+        setInterval(check, 30000);
+      })();
+    </script>
+  <% } %>
 </body>
 </html>

@@ -77,7 +77,7 @@
           </tr>
         <% } %>
       </tbody>
-      <tfoot><tr><th colspan="4">Tổng cộng</th><th class="num"><%= formatPrice(order.total) %></th></tr></tfoot>
+      <tfoot><% if (order.shipping_fee) { %><tr><td colspan="4">Phí vận chuyển</td><td class="num"><%= formatPrice(order.shipping_fee) %></td></tr><% } %><tr><th colspan="4">Tổng cộng</th><th class="num"><%= formatPrice(order.total) %></th></tr></tfoot>
     </table>
 
     <% if (order.payment_status === 'paid') { %>

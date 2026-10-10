@@ -39,6 +39,13 @@
           </li>
         <% } %>
       </ul>
+      <% if (Number(site.ship_fee) > 0) { %>
+        <p class="cart-sum"><span>Tạm tính</span> <span><%= formatPrice(subtotal) %></span></p>
+        <p class="cart-sum"><span>Phí vận chuyển</span> <span><%= shipping ? formatPrice(shipping) : 'Miễn phí' %></span></p>
+        <% if (shipping && Number(site.ship_free_from) > 0) { %>
+          <p class="cart-sum-note">Mua thêm <%= formatPrice(Number(site.ship_free_from) - subtotal) %> để được miễn phí vận chuyển.</p>
+        <% } %>
+      <% } %>
       <p class="cart-total"><span>Tổng cộng</span> <b><%= formatPrice(total) %></b></p>
       <a class="more" href="/san-pham">Tiếp tục xem sản phẩm</a>
     </div>

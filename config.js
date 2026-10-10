@@ -26,6 +26,9 @@ const SITE = {
   bank_bin: '',
   bank_account: '',
   bank_holder: '',
+  // Phí vận chuyển mỗi đơn (đồng) và mức tiền hàng được miễn phí. 0 là không tính phí / không miễn phí theo mức.
+  ship_fee: '0',
+  ship_free_from: '0',
 };
 
 module.exports = { SITE };

@@ -11,6 +11,8 @@
 </div>
 
 <% if (saved) { %><p class="notice ok" role="status">Đã lưu.</p><% } %>
+<% if (product.hidden) { %><p class="notice" role="status">Sản phẩm này đang <b>ẩn</b>: khách không thấy trên trang bán hàng.</p><% } %>
+<% if (deleteBlocked) { %><p class="notice" role="alert">Không xoá được vì sản phẩm đã có trong đơn hàng. Hãy ẩn sản phẩm thay vì xoá.</p><% } %>
 
 <form class="card wide" action="/admin/san-pham/<%= product.id %>" method="post">
   <p class="muted">Mã: <b><%= product.code || '—' %></b> · Danh mục: <b><%= admin.categories[product.category] || product.category %></b></p>
@@ -103,6 +105,23 @@
   <% } else { %>
     <p class="muted">Sản phẩm này chưa có mã nên chưa có thư mục ảnh.</p>
   <% } %>
+</section>
+
+<section class="card wide">
+  <h2>Ẩn hoặc xoá sản phẩm</h2>
+  <p class="muted">Ẩn: khách không còn thấy sản phẩm, nhưng ảnh, tồn kho và đơn cũ vẫn giữ, lúc nào cũng hiện lại được. Xoá: bỏ hẳn sản phẩm cùng ảnh và tồn kho, không lấy lại được.</p>
+  <div class="inline">
+    <form action="/admin/san-pham/<%= product.id %>/an" method="post">
+      <button class="btn btn-light" type="submit"><%= product.hidden ? 'Hiện lại sản phẩm' : 'Ẩn sản phẩm' %></button>
+    </form>
+    <% if (product.order_count) { %>
+      <span class="muted">Đã có trong <%= product.order_count %> dòng đơn hàng nên không xoá được.</span>
+    <% } else { %>
+      <form action="/admin/san-pham/<%= product.id %>/xoa" method="post" onsubmit="return confirm('Xoá hẳn sản phẩm này cùng toàn bộ ảnh và tồn kho? Không lấy lại được.')">
+        <button class="btn btn-danger" type="submit">Xoá sản phẩm</button>
+      </form>
+    <% } %>
+  </div>
 </section>
 
 <section class="card wide" id="danh-gia">

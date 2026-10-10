@@ -231,6 +231,10 @@ async function migrate() {
     ALTER TABLE products ADD COLUMN IF NOT EXISTS size_labels TEXT;
     ALTER TABLE order_items ADD COLUMN IF NOT EXISTS size_label TEXT;
 
+    -- Sản phẩm đang ẩn không hiện trên trang bán hàng; phí vận chuyển đã tính vào tổng tiền của đơn
+    ALTER TABLE products ADD COLUMN IF NOT EXISTS hidden BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_fee INTEGER NOT NULL DEFAULT 0;
+
     CREATE UNIQUE INDEX IF NOT EXISTS products_code ON products(code) WHERE code IS NOT NULL;
   `);
 

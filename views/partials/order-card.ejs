@@ -45,6 +45,7 @@
         <a class="text-btn" href="/gio-hang/cam-on?ma=<%= orderCode(order.id) %>">Xem mã QR chuyển khoản</a>
       <% } %>
     </div>
-    <p class="order-total"><span>Tổng cộng</span> <b><%= formatPrice(order.total) %></b></p>
+    <div class="order-sums"><% if (order.shipping_fee) { %><p class="muted">Phí vận chuyển: <%= formatPrice(order.shipping_fee) %></p><% } %>
+    <p class="order-total"><span>Tổng cộng</span> <b><%= formatPrice(order.total) %></b></p></div>
   </footer>
 </article>
