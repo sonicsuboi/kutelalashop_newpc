@@ -686,7 +686,7 @@ app.post('/tra-cuu-don', ah(async (req, res) => {
   orders = orders.slice(0, 20);
   for (const order of orders) {
     order.items = await db.query(`
-      SELECT i.name, i.color, i.size, i.size_label, i.qty, i.price, p.slug, p.image_url FROM order_items i
+      SELECT i.name, i.color, i.size, i.size_label, i.qty, i.price, i.returned_qty, i.return_note, p.slug, p.image_url FROM order_items i
       LEFT JOIN products p ON p.id = i.product_id WHERE i.order_id = ? ORDER BY i.id`, [order.id]);
   }
   res.status(orders.length ? 200 : 404).render('order-lookup', {

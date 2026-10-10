@@ -9,7 +9,7 @@ const { retailPrice } = require('./pricing');
 const { CATEGORIES, GROUPS, CODE_PREFIXES, nextCode, sizesOf, colorsOf, variantsOf, stockMap, setStock } = require('./catalog');
 const {
   ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, CARRIERS, CANCEL_REASONS, cancelStageOf,
-  orderCode, cancelOrder, receiveReturn, markPaid,
+  orderCode, cancelOrder, receiveReturn, markPaid, returnItem, refundDue, markRefunded,
 } = require('./orders');
 const { syncProductMedia, prefixOf } = require('./media');
 const storage = require('./storage');
@@ -79,7 +79,7 @@ router.use((req, res, next) => {
   res.set('Cache-Control', 'no-store');
   res.locals.admin = {
     statuses: ORDER_STATUS, methods: PAYMENT_METHOD, payments: PAYMENT_STATUS,
-    categories: CATEGORIES, groups: GROUPS, banks: BANKS, carriers: CARRIERS, vnTime, cancelReasons: CANCEL_REASONS, cancelStageOf, cancelLabel, codePrefixes: CODE_PREFIXES, orderCode, sourceLabel, section: req.path.split('/')[1] || '',
+    categories: CATEGORIES, groups: GROUPS, banks: BANKS, carriers: CARRIERS, vnTime, cancelReasons: CANCEL_REASONS, cancelStageOf, cancelLabel, refundDue, codePrefixes: CODE_PREFIXES, orderCode, sourceLabel, section: req.path.split('/')[1] || '',
   };
   next();
 });
@@ -129,7 +129,7 @@ router.get('/', ah(async (req, res) => {
 
   // doanh thu 7 ngày gần nhất, kể cả ngày không có đơn
   const weekRows = await db.query(`
-    SELECT ${VN} AS day, COALESCE(SUM(total), 0)::int AS revenue, COUNT(*)::int AS orders
+    SELECT ${VN} AS day, COALESCE(SUM(total - returned_value), 0)::int AS revenue, COUNT(*)::int AS orders
     FROM orders WHERE ${sold} AND ${VN} >= to_char((now() AT TIME ZONE 'utc') + interval '7 hours' - interval '6 days', 'YYYY-MM-DD')
     GROUP BY day`);
   const rows = new Map(weekRows.map((r) => [r.day, r]));
@@ -145,16 +145,17 @@ router.get('/', ah(async (req, res) => {
     todo: {
       newOrders: await one("SELECT COUNT(*)::int AS n FROM orders WHERE status = 'new'"),
       shipping: await one("SELECT COUNT(*)::int AS n FROM orders WHERE status IN ('confirmed', 'shipping')"),
-      refund: await one("SELECT COUNT(*)::int AS n FROM orders WHERE status = 'cancelled' AND payment_status = 'paid'"),
+      // đơn đã thu tiền mà bị huỷ hoặc có sản phẩm hoàn, chưa chuyển lại đủ tiền cho khách
+      refund: await one("SELECT COUNT(*)::int AS n FROM orders WHERE payment_status = 'paid' AND (CASE WHEN status = 'cancelled' THEN total ELSE returned_value END) > refunded_amount"),
       messages: await one('SELECT COUNT(*)::int AS n FROM messages WHERE NOT done'),
       returns: await one("SELECT COUNT(*)::int AS n FROM orders WHERE status = 'cancelled' AND cancel_stage = 'after' AND returned_at IS NULL"),
       soldOut: products.filter((p) => !p.stock_total).length,
       noPhoto: products.filter((p) => !p.media_count).length,
     },
     stats: {
-      todayRevenue: await one(`SELECT COALESCE(SUM(total), 0)::int AS n FROM orders WHERE ${sold} AND ${VN} = ${today}`),
+      todayRevenue: await one(`SELECT COALESCE(SUM(total - returned_value), 0)::int AS n FROM orders WHERE ${sold} AND ${VN} = ${today}`),
       todayOrders: await one(`SELECT COUNT(*)::int AS n FROM orders WHERE ${sold} AND ${VN} = ${today}`),
-      monthRevenue: await one(`SELECT COALESCE(SUM(total), 0)::int AS n FROM orders WHERE ${sold} AND to_char(created_at + interval '7 hours', 'YYYY-MM') = to_char((now() AT TIME ZONE 'utc') + interval '7 hours', 'YYYY-MM')`),
+      monthRevenue: await one(`SELECT COALESCE(SUM(total - returned_value), 0)::int AS n FROM orders WHERE ${sold} AND to_char(created_at + interval '7 hours', 'YYYY-MM') = to_char((now() AT TIME ZONE 'utc') + interval '7 hours', 'YYYY-MM')`),
       monthOrders: await one(`SELECT COUNT(*)::int AS n FROM orders WHERE ${sold} AND to_char(created_at + interval '7 hours', 'YYYY-MM') = to_char((now() AT TIME ZONE 'utc') + interval '7 hours', 'YYYY-MM')`),
       products: products.length,
       units: products.reduce((n, p) => n + p.stock_total, 0),
@@ -173,7 +174,7 @@ router.get('/', ah(async (req, res) => {
 async function attachItems(orders) {
   if (!orders.length) return orders;
   const rows = await db.query(`
-    SELECT i.order_id, i.name, i.color, i.size, i.size_label, i.qty, p.image_url
+    SELECT i.order_id, i.name, i.color, i.size, i.size_label, i.qty, i.returned_qty, p.image_url
     FROM order_items i LEFT JOIN products p ON p.id = i.product_id
     WHERE i.order_id = ANY(?) ORDER BY i.id`, [orders.map((o) => o.id)]);
   for (const order of orders) order.items = rows.filter((r) => r.order_id === order.id);
@@ -184,14 +185,15 @@ async function attachItems(orders) {
 async function filterOrders(query) {
   const status = Object.hasOwn(ORDER_STATUS, query.status) ? query.status : '';
   const pay = ['unpaid', 'paid'].includes(query.tt) ? query.tt : '';
-  const cancel = ['truoc', 'sau', 'cho-hoan'].includes(query.huy) ? query.huy : '';
+  const cancel = ['truoc', 'sau', 'cho-hoan', 'hoan-tien'].includes(query.huy) ? query.huy : '';
   const q = text(query.q).slice(0, 80);
   const digits = (s) => String(s || '').replace(/\D/g, '');
   let orders = await db.query('SELECT * FROM orders ORDER BY id DESC LIMIT 2000');
   if (status) orders = orders.filter((o) => o.status === status);
   if (pay) orders = orders.filter((o) => (o.payment_status === 'paid') === (pay === 'paid'));
   // kiểu huỷ: trước khi giao, sau khi giao, hoặc riêng các đơn đang chờ hàng hoàn về
-  if (cancel) {
+  if (cancel === 'hoan-tien') orders = orders.filter((o) => refundDue(o) > 0);
+  else if (cancel) {
     orders = orders.filter((o) => o.status === 'cancelled' && (cancel === 'truoc' ? o.cancel_stage !== 'after'
       : o.cancel_stage === 'after' && (cancel === 'sau' || !o.returned_at)));
   }
@@ -221,11 +223,12 @@ router.get('/don-hang/xuat.csv', ah(async (req, res) => {
   await attachItems(orders);
   const cell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
   const head = ['Mã đơn', 'Ngày đặt', 'Khách hàng', 'Điện thoại', 'Địa chỉ', 'Sản phẩm', 'Phí vận chuyển', 'Tổng tiền',
-    'Hình thức', 'Thanh toán', 'Trạng thái', 'Kiểu huỷ', 'Lý do huỷ', 'Đơn vị vận chuyển', 'Mã vận đơn', 'Ghi chú của khách', 'Ghi chú của shop'];
+    'Hình thức', 'Thanh toán', 'Trạng thái', 'Kiểu huỷ', 'Lý do huỷ', 'Sản phẩm hoàn', 'Tiền hàng hoàn', 'Đã hoàn tiền', 'Đơn vị vận chuyển', 'Mã vận đơn', 'Ghi chú của khách', 'Ghi chú của shop'];
   const lines = orders.map((o) => [
     orderCode(o.id), vnTime(o.created_at), o.name, o.phone, o.address,
     o.items.map((i) => `${i.name}${i.color ? ` - ${i.color}` : ''}${i.size ? ` - size ${i.size_label || i.size}` : ''} x${i.qty}`).join('; '),
     o.shipping_fee, o.total, PAYMENT_METHOD[o.payment_method], PAYMENT_STATUS[o.payment_status], ORDER_STATUS[o.status], cancelLabel(o), o.cancel_reason || '',
+    o.items.filter((i) => i.returned_qty).map((i) => ` x${i.returned_qty}`).join('; '), o.returned_value, o.refunded_amount,
     CARRIERS[o.carrier] || '', o.tracking_code || '', o.note || '', o.admin_note || '',
   ].map(cell).join(','));
   res.set('Content-Disposition', 'attachment; filename="don-hang.csv"');
@@ -242,7 +245,7 @@ async function billOf(order, site) {
     items: await db.query(`
       SELECT i.*, p.code FROM order_items i LEFT JOIN products p ON p.id = i.product_id
       WHERE i.order_id = ? ORDER BY i.id`, [order.id]),
-    transfer: order.payment_status === 'paid' ? null : await transferQr(site, order.total, orderCode(order.id)),
+    transfer: order.payment_status === 'paid' ? null : await transferQr(site, order.total - order.returned_value, orderCode(order.id)),
   };
 }
 
@@ -322,6 +325,23 @@ router.post('/don-hang/:id(\\d+)/huy', ah(async (req, res, next) => {
   const reason = [reasons.includes(req.body.reason) ? req.body.reason : '', text(req.body.detail).slice(0, 200)].filter(Boolean).join(': ');
   await cancelOrder(order.id, null, reason || null);
   res.redirect(`/admin/don-hang/${order.id}`);
+}));
+
+// Hoàn một sản phẩm trong đơn: dòng sản phẩm bị gạch đi và ghi "SP hoàn". Số lượng 0 là bỏ đánh dấu.
+router.post('/don-hang/:id(\\d+)/sp/:itemId(\\d+)/hoan', ah(async (req, res, next) => {
+  const order = await getOrder(req.params.id);
+  if (!order) return next();
+  await returnItem(order.id, Number(req.params.itemId), int(req.body.qty) || 0,
+    text(req.body.note).slice(0, 200) || null, req.body.restock === '1');
+  res.redirect(`/admin/don-hang/${order.id}?ok=1`);
+}));
+
+// Shop đã chuyển lại tiền cho khách (đơn huỷ đã thu tiền, hoặc phần sản phẩm hoàn)
+router.post('/don-hang/:id(\\d+)/da-hoan-tien', ah(async (req, res, next) => {
+  const order = await getOrder(req.params.id);
+  if (!order) return next();
+  await markRefunded(order.id);
+  res.redirect(`/admin/don-hang/${order.id}?ok=1`);
 }));
 
 // Shop đã nhận lại hàng hoàn của đơn huỷ sau khi giao: cộng hàng vào kho
@@ -566,7 +586,7 @@ router.get('/truy-cap', ah(async (req, res) => {
 
   const total = await db.one(`SELECT COUNT(*)::int AS views, COUNT(DISTINCT visitor)::int AS visitors FROM visits WHERE ${since}`);
   const orderRows = await db.query(`
-    SELECT COALESCE(source, 'truc-tiep') AS source, COUNT(*)::int AS orders, COALESCE(SUM(total), 0)::int AS revenue
+    SELECT COALESCE(source, 'truc-tiep') AS source, COUNT(*)::int AS orders, COALESCE(SUM(total - returned_value), 0)::int AS revenue
     FROM orders WHERE status != 'cancelled' AND ${since} GROUP BY 1`);
   const ordersBy = new Map(orderRows.map((r) => [r.source, r]));
   const sources = (await db.query(`
@@ -624,7 +644,7 @@ router.get('/seo', ah(async (req, res) => {
   const fromSearch = await db.one(`
     SELECT COUNT(DISTINCT visitor)::int AS visitors, COUNT(*)::int AS views FROM visits WHERE source IN (${engines}) AND ${since}`);
   const orders = await db.one(`
-    SELECT COUNT(*)::int AS n, COALESCE(SUM(total), 0)::int AS revenue
+    SELECT COUNT(*)::int AS n, COALESCE(SUM(total - returned_value), 0)::int AS revenue
     FROM orders WHERE status != 'cancelled' AND source IN (${engines}) AND ${since}`);
 
   const dayRows = new Map((await db.query(`
@@ -689,7 +709,7 @@ router.get('/khach-hang', ah(async (req, res) => {
   let customers = await db.query(`
     SELECT c.id, c.name, c.phone, c.address, c.created_at,
       (SELECT COUNT(*) FROM orders o WHERE o.customer_id = c.id AND o.status != 'cancelled')::int AS orders,
-      (SELECT COALESCE(SUM(total), 0) FROM orders o WHERE o.customer_id = c.id AND o.status != 'cancelled')::int AS spent
+      (SELECT COALESCE(SUM(total - returned_value), 0) FROM orders o WHERE o.customer_id = c.id AND o.status != 'cancelled')::int AS spent
     FROM customers c ORDER BY c.id DESC LIMIT 500`);
   if (q) customers = customers.filter((c) => fold(`${c.name} ${c.phone} ${c.address || ''}`).includes(fold(q)));
   res.render('admin/customers', { title: 'Khách hàng', customers, q, reset: text(req.query.reset) });

@@ -27,6 +27,8 @@
     th { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: #666; }
     .num { text-align: right; white-space: nowrap; }
     tfoot th { padding-top: 10px; font-size: 14px; color: #111; text-transform: none; letter-spacing: 0; border-bottom: 0; }
+    tr.returned td { color: #888; text-decoration: line-through; }
+    tr.returned .keep { display: inline-block; color: #111; text-decoration: none; }
     .pay { display: flex; gap: 16px; align-items: center; margin-top: 14px; padding: 10px; border: 1px solid #111; }
     .pay svg { display: block; width: 34mm; height: 34mm; flex: none; }
     .pay b { font-size: 14px; }
@@ -72,16 +74,16 @@
       <thead><tr><th>Mã</th><th>Tên</th><th class="num">SL</th><th class="num">Đơn giá</th><th class="num">Thành tiền</th></tr></thead>
       <tbody>
         <% for (const item of items) { %>
-          <tr>
+          <tr class="<%= item.returned_qty >= item.qty ? 'returned' : '' %>">
             <td><%= item.code || '' %></td>
-            <td><%= item.name %><% const v = [item.color, item.size && `size ${item.size_label || item.size}`].filter(Boolean).join(' · '); if (v) { %><br><span class="muted"><%= v %></span><% } %></td>
+            <td><%= item.name %><% const v = [item.color, item.size && `size ${item.size_label || item.size}`].filter(Boolean).join(' · '); if (v) { %><br><span class="muted"><%= v %></span><% } %><% if (item.returned_qty) { %><br><b class="keep">SP hoàn<%= item.returned_qty < item.qty ? ` ${item.returned_qty}/${item.qty}` : '' %><%= item.return_note ? ` · ${item.return_note}` : '' %></b><% } %></td>
             <td class="num"><%= item.qty %></td>
             <td class="num"><%= formatPrice(item.price) %></td>
-            <td class="num"><%= formatPrice(item.price * item.qty) %></td>
+            <td class="num"><%= formatPrice(item.price * (item.qty - item.returned_qty)) %></td>
           </tr>
         <% } %>
       </tbody>
-      <tfoot><% if (order.shipping_fee) { %><tr><td colspan="4">Phí vận chuyển</td><td class="num"><%= formatPrice(order.shipping_fee) %></td></tr><% } %><tr><th colspan="4">Tổng cộng</th><th class="num"><%= formatPrice(order.total) %></th></tr></tfoot>
+      <tfoot><% if (order.shipping_fee) { %><tr><td colspan="4">Phí vận chuyển</td><td class="num"><%= formatPrice(order.shipping_fee) %></td></tr><% } %><% if (order.returned_value) { %><tr><td colspan="4">Sản phẩm hoàn</td><td class="num">−<%= formatPrice(order.returned_value) %></td></tr><% } %><tr><th colspan="4">Tổng cộng</th><th class="num"><%= formatPrice(order.total - order.returned_value) %></th></tr></tfoot>
     </table>
 
     <% if (order.payment_status === 'paid') { %>
@@ -93,13 +95,13 @@
           <p><b>Quét mã để chuyển khoản</b></p>
           <p><%= transfer.bank.name %> · <b><%= transfer.bank.account %></b></p>
           <% if (transfer.bank.holder) { %><p><%= transfer.bank.holder %></p><% } %>
-          <p>Số tiền: <b><%= formatPrice(order.total) %></b></p>
+          <p>Số tiền: <b><%= formatPrice(order.total - order.returned_value) %></b></p>
           <p>Nội dung: <b><%= transfer.content %></b></p>
           <% if (order.payment_method === 'cod') { %><p class="muted">Hoặc trả tiền mặt khi nhận hàng.</p><% } %>
         </div>
       </div>
     <% } else { %>
-      <div class="pay"><p><b>Thu khi giao hàng:</b> <%= formatPrice(order.total) %></p></div>
+      <div class="pay"><p><b>Thu khi giao hàng:</b> <%= formatPrice(order.total - order.returned_value) %></p></div>
     <% } %>
 
     <p class="thanks muted">Cảm ơn bạn đã mua hàng tại <%= shopName %>.</p>

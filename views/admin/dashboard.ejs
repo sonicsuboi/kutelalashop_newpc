@@ -5,7 +5,7 @@
     { n: todo.messages, text: 'tin nhắn của khách chưa trả lời', href: '/admin/tin-nhan', urgent: true },
     { n: todo.returns, text: 'đơn huỷ sau khi giao đang chờ nhận lại hàng', href: '/admin/don-hang?huy=cho-hoan', urgent: true },
     { n: todo.shipping, text: 'đơn đang chuẩn bị / đang giao', href: '/admin/don-hang?status=shipping' },
-    { n: todo.refund, text: 'đơn đã huỷ cần hoàn tiền cho khách', href: '/admin/don-hang?status=cancelled', urgent: true },
+    { n: todo.refund, text: 'đơn cần hoàn tiền cho khách (đơn huỷ hoặc có sản phẩm hoàn)', href: '/admin/don-hang?huy=hoan-tien', urgent: true },
     { n: todo.soldOut, text: 'mẫu đã hết hàng', href: '/admin/san-pham' },
     { n: todo.noPhoto, text: 'mẫu chưa có ảnh', href: '/admin/san-pham' },
   ].filter((t) => t.n > 0);

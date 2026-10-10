@@ -1287,3 +1287,7 @@ main {
 .mosaic-accent:hover::before, .mosaic-accent:focus-within::before { opacity: 1; }
 .mosaic-dark::before { opacity: 1; }
 .mosaic-dark:hover::before, .mosaic-dark:focus-within::before { opacity: 0; }
+/* Sản phẩm hoàn trong đơn của khách: gạch tên và giá, nhãn "SP hoàn" */
+.order-returned .order-item-name, .order-returned .order-item-total, .order-returned .order-item-info > .muted { color: var(--muted); text-decoration: line-through; }
+.order-returned .order-thumb img { opacity: .45; }
+.order-return-tag { display: inline-block; margin-top: 4px; padding: 2px 8px; font-size: 11px; font-weight: 700; color: #fff; background: #b3261e; }

@@ -32,10 +32,11 @@
     <option value="paid" <%= pay === 'paid' ? 'selected' : '' %>>Đã thanh toán</option>
   </select>
   <select name="huy" aria-label="Kiểu huỷ">
-    <option value="">Mọi kiểu huỷ</option>
+    <option value="">Huỷ / hoàn: tất cả</option>
     <option value="truoc" <%= cancel === 'truoc' ? 'selected' : '' %>>Huỷ trước khi giao</option>
     <option value="sau" <%= cancel === 'sau' ? 'selected' : '' %>>Huỷ sau khi giao (hoàn hàng)</option>
     <option value="cho-hoan" <%= cancel === 'cho-hoan' ? 'selected' : '' %>>Đang chờ nhận lại hàng</option>
+    <option value="hoan-tien" <%= cancel === 'hoan-tien' ? 'selected' : '' %>>Cần hoàn tiền cho khách</option>
   </select>
   <button class="btn btn-light" type="submit">Lọc</button>
   <% if (q || pay || cancel) { %><a href="<%= link({ q: '', tt: '', huy: '' }) %>">Bỏ lọc</a><% } %>

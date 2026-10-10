@@ -244,6 +244,14 @@ async function migrate() {
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancel_reason TEXT;
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancelled_at TIMESTAMP;
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS returned_at TIMESTAMP;
+    -- Hoàn từng sản phẩm trong đơn: số lượng hoàn, ghi chú, có cộng lại kho không. returned_value là tổng
+    -- tiền các sản phẩm đã hoàn của đơn; refunded_amount là số tiền shop đã chuyển lại cho khách.
+    ALTER TABLE order_items ADD COLUMN IF NOT EXISTS returned_qty INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE order_items ADD COLUMN IF NOT EXISTS return_note TEXT;
+    ALTER TABLE order_items ADD COLUMN IF NOT EXISTS return_restocked BOOLEAN NOT NULL DEFAULT false;
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS returned_value INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS refunded_amount INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE orders ADD COLUMN IF NOT EXISTS refunded_at TIMESTAMP;
     -- Mã của nhà cung cấp (vd BDGĐ229), chỉ hiện trong trang quản trị để shop đặt lại hàng
     ALTER TABLE products ADD COLUMN IF NOT EXISTS supplier_code TEXT;
     ALTER TABLE orders ADD COLUMN IF NOT EXISTS shipping_fee INTEGER NOT NULL DEFAULT 0;

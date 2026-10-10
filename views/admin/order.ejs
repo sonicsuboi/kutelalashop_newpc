@@ -12,21 +12,38 @@
   <section>
     <h2>Sản phẩm</h2>
     <table class="table">
-      <thead><tr><th>Hình</th><th>Mã</th><th>Sản phẩm</th><th>Màu / size</th><th class="num">SL</th><th class="num">Đơn giá</th><th class="num">Thành tiền</th></tr></thead>
+      <thead><tr><th>Hình</th><th>Mã</th><th>Sản phẩm</th><th>Màu / size</th><th class="num">SL</th><th class="num">Đơn giá</th><th class="num">Thành tiền</th><th>Hoàn</th></tr></thead>
       <tbody>
         <% for (const item of items) { %>
-          <tr>
+          <tr class="<%= item.returned_qty >= item.qty ? 'returned' : '' %>">
             <td class="thumb-cell"><% if (item.image_url) { %><img class="thumb" src="<%= item.image_url %>" alt="" loading="lazy"><% } else { %><span class="thumb thumb-empty">Chưa có</span><% } %></td>
             <td><%= item.code || '—' %></td>
-            <td><% if (item.slug) { %><a href="/admin/san-pham/<%= item.product_id %>"><%= item.name %></a><% } else { %><%= item.name %><% } %></td>
+            <td><% if (item.slug) { %><a href="/admin/san-pham/<%= item.product_id %>"><%= item.name %></a><% } else { %><%= item.name %><% } %>
+              <% if (item.returned_qty) { %><br><span class="tag tag-return">SP hoàn<%= item.returned_qty < item.qty ? ` ${item.returned_qty}/${item.qty}` : '' %></span><% if (item.return_note) { %> <span class="muted small"><%= item.return_note %></span><% } %><% if (!item.return_restocked) { %> <span class="muted small">(không cộng kho)</span><% } %><% } %></td>
             <td><%= [item.color, item.size && `Size ${item.size_label || item.size}`].filter(Boolean).join(' · ') || '—' %></td>
             <td class="num"><%= item.qty %></td>
             <td class="num"><%= formatPrice(item.price) %></td>
-            <td class="num"><%= formatPrice(item.price * item.qty) %></td>
+            <td class="num"><%= formatPrice(item.price * (item.qty - item.returned_qty)) %><% if (item.returned_qty) { %><br><s class="muted small"><%= formatPrice(item.price * item.qty) %></s><% } %></td>
+            <td class="no-strike">
+              <% if (order.status !== 'cancelled') { %>
+                <details class="return-box">
+                  <summary><%= item.returned_qty ? 'Sửa' : 'Hoàn SP' %></summary>
+                  <form action="/admin/don-hang/<%= order.id %>/sp/<%= item.id %>/hoan" method="post">
+                    <label class="field"><span>Số lượng hoàn</span>
+                      <input type="number" name="qty" value="<%= item.returned_qty || item.qty %>" min="0" max="<%= item.qty %>"></label>
+                    <label class="field"><span>Ghi chú</span>
+                      <input type="text" name="note" value="<%= item.return_note || '' %>" maxlength="200" placeholder="vd: không vừa size"></label>
+                    <label class="check"><input type="checkbox" name="restock" value="1" <%= !item.returned_qty || item.return_restocked ? 'checked' : '' %>><span>Cộng lại vào kho</span></label>
+                    <button class="btn" type="submit">Lưu</button>
+                    <small class="muted">Nhập 0 để bỏ đánh dấu hoàn.</small>
+                  </form>
+                </details>
+              <% } %>
+            </td>
           </tr>
         <% } %>
       </tbody>
-      <tfoot><% if (order.shipping_fee) { %><tr><td colspan="6">Phí vận chuyển</td><td class="num"><%= formatPrice(order.shipping_fee) %></td></tr><% } %><tr><th colspan="6">Tổng cộng</th><th class="num"><%= formatPrice(order.total) %></th></tr></tfoot>
+      <tfoot><% if (order.shipping_fee) { %><tr><td colspan="6">Phí vận chuyển</td><td class="num"><%= formatPrice(order.shipping_fee) %></td><td></td></tr><% } %><% if (order.returned_value) { %><tr><td colspan="6">Tổng ban đầu</td><td class="num"><s><%= formatPrice(order.total) %></s></td><td></td></tr><tr><td colspan="6">Sản phẩm hoàn</td><td class="num">−<%= formatPrice(order.returned_value) %></td><td></td></tr><% } %><tr><th colspan="6"><%= order.returned_value ? 'Tổng sau khi hoàn' : 'Tổng cộng' %></th><th class="num"><%= formatPrice(order.total - order.returned_value) %></th><th></th></tr></tfoot>
     </table>
   </section>
 
@@ -51,8 +68,16 @@
         <dt>Tình trạng</dt><dd><%= admin.payments[order.payment_status] %><% if (order.paid_at) { %> lúc <%= admin.vnTime(order.paid_at) %><% } %></dd>
         <% if (order.payment_ref) { %><dt>Mã giao dịch</dt><dd><%= order.payment_ref %></dd><% } %>
       </dl>
-      <% if (order.status === 'cancelled' && order.payment_status === 'paid') { %>
-        <p class="error">Đơn đã huỷ nhưng khách đã trả tiền: cần hoàn tiền cho khách.</p>
+      <% const due = admin.refundDue(order); %>
+      <% if (due) { %>
+        <p class="error">Cần chuyển lại cho khách <b><%= formatPrice(due) %></b> (<%= order.status === 'cancelled' ? 'đơn đã huỷ sau khi thu tiền' : 'tiền sản phẩm hoàn' %>).</p>
+        <form action="/admin/don-hang/<%= order.id %>/da-hoan-tien" method="post" onsubmit="return confirm('Xác nhận đã chuyển lại <%= formatPrice(due) %> cho khách?')">
+          <button class="btn" type="submit">Đã hoàn tiền cho khách</button>
+        </form>
+      <% } %>
+      <% if (order.refunded_amount) { %><p class="muted">Đã hoàn cho khách <%= formatPrice(order.refunded_amount) %> lúc <%= admin.vnTime(order.refunded_at) %>.</p><% } %>
+      <% if (order.returned_value && order.payment_status !== 'paid' && order.status !== 'cancelled') { %>
+        <p class="muted">Có sản phẩm hoàn: chỉ còn phải thu <b><%= formatPrice(order.total - order.returned_value) %></b>.</p>
       <% } %>
       <% if (order.payment_status !== 'paid' && order.status !== 'cancelled') { %>
         <form action="/admin/don-hang/<%= order.id %>/da-thanh-toan" method="post">

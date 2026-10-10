@@ -20,7 +20,7 @@
 
   <ul class="order-items">
     <% for (const item of order.items) { %>
-      <li>
+      <li class="<%= item.returned_qty >= item.qty ? 'order-returned' : '' %>">
         <% if (item.slug) { %><a class="order-thumb" href="/san-pham/<%= item.slug %>" tabindex="-1" aria-hidden="true"><% } else { %><span class="order-thumb"><% } %>
           <% if (item.image_url) { %><img src="<%= item.image_url %>" alt="" loading="lazy"><% } %>
         <% if (item.slug) { %></a><% } else { %></span><% } %>
@@ -28,9 +28,10 @@
           <p class="order-item-name"><% if (item.slug) { %><a href="/san-pham/<%= item.slug %>"><%= item.name %></a><% } else { %><%= item.name %><% } %></p>
           <p class="muted"><%= [item.color && `Màu ${item.color}`, item.size && `Size ${item.size_label || item.size}`].filter(Boolean).join(' · ') %></p>
           <p class="muted"><%= formatPrice(item.price) %> × <%= item.qty %></p>
+          <% if (item.returned_qty) { %><p class="order-return-tag">SP hoàn<%= item.returned_qty < item.qty ? ` ${item.returned_qty}/${item.qty}` : '' %><%= item.return_note ? ` · ${item.return_note}` : '' %></p><% } %>
           <% if (locals.review && order.status === 'done' && item.slug) { %><a class="text-btn" href="/san-pham/<%= item.slug %>#danh-gia">Viết đánh giá</a><% } %>
         </div>
-        <p class="order-item-total"><%= formatPrice(item.price * item.qty) %></p>
+        <p class="order-item-total"><%= formatPrice(item.price * (item.qty - (item.returned_qty || 0))) %></p>
       </li>
     <% } %>
   </ul>
@@ -48,6 +49,6 @@
       <% } %>
     </div>
     <div class="order-sums"><% if (order.shipping_fee) { %><p class="muted">Phí vận chuyển: <%= formatPrice(order.shipping_fee) %></p><% } %>
-    <p class="order-total"><span>Tổng cộng</span> <b><%= formatPrice(order.total) %></b></p></div>
+    <p class="order-total"><span>Tổng cộng</span> <b><%= formatPrice(order.total - (order.returned_value || 0)) %></b></p><% if (order.returned_value) { %><p class="muted">Đã trừ <%= formatPrice(order.returned_value) %> sản phẩm hoàn<%= order.refunded_amount ? ` · đã hoàn tiền ${formatPrice(order.refunded_amount)}` : '' %></p><% } %></div>
   </footer>
 </article>

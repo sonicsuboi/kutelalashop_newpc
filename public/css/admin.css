@@ -206,3 +206,13 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--ink); outli
 .card textarea, .card select { width: 100%; }
 
 .card input[type="text"] { width: 100%; }
+
+/* Sản phẩm hoàn trong đơn: gạch cả dòng (trừ ô thao tác), kèm nhãn "SP hoàn" */
+.table tr.returned td:not(.no-strike) { color: var(--muted); text-decoration: line-through; }
+.table tr.returned .thumb { opacity: .45; }
+.tag-return { color: #fff; background: var(--danger); border-color: var(--danger); text-decoration: none; }
+.table tr.returned .tag-return, .table tr.returned .small { display: inline-block; text-decoration: none; }
+.return-box summary { cursor: pointer; text-decoration: underline; white-space: nowrap; }
+.return-box form { margin-top: 8px; min-width: 190px; }
+.return-box .field { margin-bottom: 8px; }
+.return-box .check { min-height: 0; margin: 4px 0 8px; }

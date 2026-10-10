@@ -33,10 +33,11 @@
               <% if (items.length > 3) { %><span class="thumb thumb-empty">+<%= items.length - 3 %></span><% } %>
             </a>
             <span class="muted small"><%= items.reduce((n, i) => n + i.qty, 0) %> món</span>
+            <% const back = items.reduce((n, i) => n + (i.returned_qty || 0), 0); if (back) { %><br><span class="warn small"><%= back %> SP hoàn</span><% } %>
           </td>
         <% } %>
         <td><%= order.name %><br><a class="muted" href="tel:<%= order.phone.replace(/\s/g, '') %>"><%= order.phone %></a></td>
-        <td class="num"><%= formatPrice(order.total) %></td>
+        <td class="num"><%= formatPrice(order.total - (order.returned_value || 0)) %><% if (order.returned_value) { %><br><s class="muted small"><%= formatPrice(order.total) %></s><% } %><% if (admin.refundDue(order)) { %><br><span class="warn small">Cần hoàn <%= formatPrice(admin.refundDue(order)) %></span><% } %></td>
         <td><%= admin.methods[order.payment_method] %><br><span class="tag pay-<%= order.payment_status %>"><%= admin.payments[order.payment_status] %></span></td>
         <td>
           <span class="tag st-<%= order.status %>"><%= admin.statuses[order.status] %></span>
