@@ -14,6 +14,7 @@ const {
 } = require('./orders');
 const vnpay = require('./vnpay');
 const { bankOf, transferQr } = require('./vietqr');
+const mail = require('./mail');
 const admin = require('./admin');
 const customers = require('./customers');
 const { track } = require('./tracking');
@@ -536,6 +537,7 @@ app.post('/lien-he', ah(async (req, res) => {
 
   await db.run('INSERT INTO messages (name, email, phone, message) VALUES (?, ?, ?, ?)',
     [values.name, values.email, values.phone || null, values.message]);
+  mail.notify(res.locals.site, `Tin nhắn mới từ ${values.name}`, mail.messageEmail({ message: values, adminUrl: `/admin/tin-nhan` }));
   res.redirect('/lien-he?sent=1');
 }));
 
@@ -617,6 +619,17 @@ app.post('/gio-hang/dat-hang', ah(async (req, res) => {
       : `“${err.line.product.name}” vừa hết hàng. Vui lòng xoá khỏi giỏ.`;
     return renderCart(req, res, { values, errors: { stock }, status: 409 });
   }
+
+  // Báo cho shop qua email (không chờ gửi xong, lỗi gửi mail không ảnh hưởng tới đơn)
+  mail.notify(res.locals.site, `Đơn mới ${orderCode(order.id)} – ${res.locals.formatPrice(order.total)}`, mail.orderEmail({
+    order: {
+      code: orderCode(order.id), name: values.name, phone: values.phone, address: values.address, note: values.note,
+      total: order.total, shipping: order.total - lines.reduce((sum, line) => sum + line.subtotal, 0), payment: PAYMENT_METHOD[values.payment],
+    },
+    lines,
+    formatPrice: res.locals.formatPrice,
+    adminUrl: `${baseUrl(req)}/admin/don-hang/${order.id}`,
+  }));
 
   // Tài khoản chưa lưu địa chỉ thì lấy luôn địa chỉ của đơn này cho lần sau
   if (customer && !customer.address) {

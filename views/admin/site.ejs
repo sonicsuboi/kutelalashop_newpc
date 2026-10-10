@@ -92,6 +92,24 @@
   <button class="btn" type="submit">Lưu thông tin</button>
 </form>
 
+<section class="card wide" id="email">
+  <h2>Báo đơn mới qua email</h2>
+  <% if (mail.test === 'ok') { %><p class="notice ok" role="status">Đã gửi email thử tới <%= mail.to %>. Kiểm tra hộp thư (cả mục Spam).</p><% } %>
+  <% if (mail.test === 'loi') { %><p class="notice" role="alert">Không gửi được email thử. <%= mail.error %></p><% } %>
+  <% if (mail.enabled) { %>
+    <p>Đang <b>bật</b>: có đơn hàng hoặc tin nhắn mới, web gửi email tới <b><%= mail.to %></b>.</p>
+    <form action="/admin/thong-tin/email-thu" method="post"><button class="btn btn-light" type="submit">Gửi email thử</button></form>
+  <% } else { %>
+    <p>Đang <b>tắt</b> vì chưa có khoá gửi email. Cách bật:</p>
+    <ol>
+      <li>Đăng ký tài khoản miễn phí tại <a href="https://resend.com" target="_blank" rel="noopener">resend.com</a> bằng đúng email <b><%= mail.to %></b>.</li>
+      <li>Trong Resend, vào <b>API Keys</b> &gt; <b>Create API Key</b>, chép khoá (bắt đầu bằng <code>re_</code>).</li>
+      <li>Trên Render: mở service &gt; <b>Environment</b> &gt; thêm biến <code>RESEND_API_KEY</code> với giá trị là khoá đó, rồi lưu.</li>
+      <li>Quay lại trang này và bấm <b>Gửi email thử</b>.</li>
+    </ol>
+  <% } %>
+</section>
+
 <section class="card wide" id="cua-hang">
   <h2>Cửa hàng</h2>
   <p class="muted">Danh sách hiện ở trang Hệ thống cửa hàng. Tên, địa chỉ và tỉnh / thành phố là bắt buộc.</p>

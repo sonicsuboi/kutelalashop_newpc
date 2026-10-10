@@ -11,6 +11,7 @@ const { ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, orderCode, cancelOrder, ma
 const { syncProductMedia, prefixOf } = require('./media');
 const storage = require('./storage');
 const { saveSite } = require('./site');
+const mail = require('./mail');
 const { BANKS, transferQr } = require('./vietqr');
 const { sourceLabel, SEARCH_ENGINES } = require('./tracking');
 const { hashPassword } = require('./customers');
@@ -577,6 +578,7 @@ router.post('/khach-hang/:id(\\d+)/mat-khau', ah(async (req, res) => {
 async function renderSite(res, { values, errors = {}, status = 200, saved = false } = {}) {
   res.status(status).render('admin/site', {
     title: 'Thông tin website',
+    mail: { enabled: mail.enabled, to: mail.recipient(res.locals.site), test: res.req.query.email || '', error: text(res.req.query.loi).slice(0, 300) },
     values: values || res.locals.site,
     stores: await db.query('SELECT * FROM stores ORDER BY id'),
     errors,
@@ -629,6 +631,12 @@ router.post('/thong-tin', ah(async (req, res) => {
   if (Object.keys(errors).length) return renderSite(res, { values, errors, status: 400 });
   await saveSite(values);
   res.redirect('/admin/thong-tin?ok=1');
+}));
+
+// Gửi một email thử để kiểm tra cấu hình báo đơn qua email
+router.post('/thong-tin/email-thu', ah(async (req, res) => {
+  const result = await mail.notify(res.locals.site, 'Email thử từ trang quản trị', '<p>Nếu bạn đọc được email này thì báo đơn qua email đã hoạt động.</p>');
+  res.redirect(`/admin/thong-tin?email=${result.ok ? 'ok' : 'loi'}${result.ok ? '' : `&loi=${encodeURIComponent(result.error)}`}#email`);
 }));
 
 // Đọc form một cửa hàng; thiếu tên, địa chỉ hoặc tỉnh thành thì trả về null
