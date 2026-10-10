@@ -70,9 +70,15 @@
       <fieldset class="pay">
         <legend>Thanh toán</legend>
         <label>
-          <input type="radio" name="payment" value="cod" <%= values.payment === 'vnpay' ? '' : 'checked' %>>
+          <input type="radio" name="payment" value="cod" <%= ['vnpay', 'bank'].includes(values.payment) ? '' : 'checked' %>>
           <span><b>Thanh toán khi nhận hàng</b><small>Tư vấn viên gọi xác nhận trước khi giao.</small></span>
         </label>
+        <% if (bankPayment) { %>
+          <label>
+            <input type="radio" name="payment" value="bank" <%= values.payment === 'bank' ? 'checked' : '' %>>
+            <span><b>Chuyển khoản ngân hàng</b><small>Đặt xong bạn nhận mã QR để quét bằng app ngân hàng, số tiền và nội dung điền sẵn.</small></span>
+          </label>
+        <% } %>
         <% if (cardPayment) { %>
           <label>
             <input type="radio" name="payment" value="vnpay" <%= values.payment === 'vnpay' ? 'checked' : '' %>>

@@ -1160,3 +1160,11 @@ main {
   .chat-float a { width: 46px; height: 46px; }
   .chat-float .chat-zalo { width: 48px; height: 48px; border-radius: 14px; }
 }
+/* Mã QR chuyển khoản ở trang cảm ơn */
+.transfer { max-width: 340px; margin: 32px auto 8px; padding: 24px; text-align: left; background: var(--tile); }
+.transfer-qr { width: 220px; margin: 0 auto 20px; padding: 8px; background: #fff; }
+.transfer-qr svg { display: block; width: 100%; height: auto; }
+.transfer dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0 0 16px; }
+.transfer dt { color: var(--muted); }
+.transfer dd { margin: 0; }
+.transfer .muted { font-size: 12px; }

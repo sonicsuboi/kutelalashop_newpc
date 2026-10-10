@@ -5,6 +5,7 @@
   <span class="tag st-<%= order.status %>"><%= admin.statuses[order.status] %></span>
   <span class="tag pay-<%= order.payment_status %>"><%= admin.payments[order.payment_status] %></span>
 </h1>
+<p><a class="btn btn-light" href="/admin/don-hang/<%= order.id %>/in" target="_blank" rel="noopener">In bill</a></p>
 
 <div class="cols">
   <section>

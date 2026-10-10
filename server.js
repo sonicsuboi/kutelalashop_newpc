@@ -13,6 +13,7 @@ const {
   ORDER_STATUS, PAYMENT_STATUS, orderCode, orderIdFromCode, OutOfStockError, createOrder, cancelOrder, markPaid,
 } = require('./orders');
 const vnpay = require('./vnpay');
+const { bankOf, transferQr } = require('./vietqr');
 const admin = require('./admin');
 const customers = require('./customers');
 const { track } = require('./tracking');
@@ -124,6 +125,7 @@ async function renderCart(req, res, { values = {}, errors = {}, status = 200 } =
     errors,
     maxQty: MAX_QTY,
     cardPayment: vnpay.enabled,
+    bankPayment: Boolean(bankOf(res.locals.site)),
   });
 }
 
@@ -589,7 +591,8 @@ app.post('/gio-hang/dat-hang', ah(async (req, res) => {
     phone: formText(req.body.phone),
     address: formText(req.body.address),
     note: formText(req.body.note).slice(0, 500),
-    payment: req.body.payment === 'vnpay' && vnpay.enabled ? 'vnpay' : 'cod',
+    payment: req.body.payment === 'vnpay' && vnpay.enabled ? 'vnpay'
+      : req.body.payment === 'bank' && bankOf(res.locals.site) ? 'bank' : 'cod',
   };
   const errors = {};
   if (!values.name || values.name.length > 100) errors.name = 'Vui lòng nhập họ tên.';
@@ -632,9 +635,13 @@ app.post('/gio-hang/dat-hang', ah(async (req, res) => {
 }));
 
 app.get('/gio-hang/cam-on', ah(async (req, res) => {
-  const order = await db.one('SELECT payment_status FROM orders WHERE id = ?', [orderIdFromCode(req.query.ma)]);
+  const order = await db.one('SELECT id, total, payment_method, payment_status FROM orders WHERE id = ?', [orderIdFromCode(req.query.ma)]);
   if (!order) return res.redirect('/gio-hang');
-  res.render('thanks', { title: 'Đã nhận đơn hàng', code: req.query.ma, paid: order.payment_status === 'paid' });
+  const paid = order.payment_status === 'paid';
+  // Đơn chọn chuyển khoản mà chưa trả tiền: hiện mã QR, nội dung chuyển khoản là mã đơn
+  const transfer = order.payment_method === 'bank' && !paid
+    ? await transferQr(res.locals.site, order.total, orderCode(order.id)) : null;
+  res.render('thanks', { title: 'Đã nhận đơn hàng', code: orderCode(order.id), paid, transfer, total: order.total });
 }));
 
 // Tra cứu đơn hàng cho khách không có tài khoản: cần đúng cả mã đơn và số điện thoại đã đặt

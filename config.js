@@ -21,6 +21,11 @@ const SITE = {
   facebook: '',
   // Mã xác minh Google Search Console (phần content của thẻ meta google-site-verification)
   google_verify: '',
+  // Tài khoản nhận chuyển khoản (mã BIN ngân hàng trong vietqr.js, số tài khoản, tên chủ tài khoản).
+  // Khai báo đủ thì web có lựa chọn "Chuyển khoản" và bill in kèm mã QR.
+  bank_bin: '',
+  bank_account: '',
+  bank_holder: '',
 };
 
 module.exports = { SITE };

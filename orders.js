@@ -10,7 +10,7 @@ const ORDER_STATUS = {
   done: 'Hoàn tất',
   cancelled: 'Đã huỷ',
 };
-const PAYMENT_METHOD = { cod: 'Khi nhận hàng', vnpay: 'Thẻ / VNPay' };
+const PAYMENT_METHOD = { cod: 'Khi nhận hàng', bank: 'Chuyển khoản', vnpay: 'Thẻ / VNPay' };
 const PAYMENT_STATUS = { unpaid: 'Chưa thanh toán', paid: 'Đã thanh toán', failed: 'Thanh toán lỗi' };
 
 const orderCode = (id) => `KT${String(id).padStart(5, '0')}`;

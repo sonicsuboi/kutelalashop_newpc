@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title><%= title %> | <%= shopName %></title>
+  <style>
+    /* Bill khổ A5, in thẳng từ trình duyệt. Các nút bấm không in ra giấy. */
+    @page { size: A5; margin: 10mm; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px; color: #111; background: #eee; font: 13px/1.45 "Helvetica Neue", Helvetica, Arial, sans-serif; }
+    .sheet { max-width: 148mm; margin: 0 auto; padding: 10mm; background: #fff; }
+    .tools { max-width: 148mm; margin: 0 auto 12px; display: flex; gap: 8px; }
+    .tools button, .tools a { padding: 8px 16px; font: inherit; color: #fff; background: #111; border: 0; text-decoration: none; cursor: pointer; }
+    .tools a { color: #111; background: #fff; border: 1px solid #111; }
+    header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; padding-bottom: 10px; border-bottom: 2px solid #111; }
+    h1 { margin: 0; font-size: 20px; letter-spacing: .12em; }
+    h2 { margin: 16px 0 6px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; }
+    p { margin: 0; }
+    .muted { color: #666; }
+    .right { text-align: right; }
+    .code { font-size: 16px; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+    th, td { padding: 6px 4px; text-align: left; vertical-align: top; border-bottom: 1px solid #ddd; }
+    th { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: #666; }
+    .num { text-align: right; white-space: nowrap; }
+    tfoot th { padding-top: 10px; font-size: 14px; color: #111; text-transform: none; letter-spacing: 0; border-bottom: 0; }
+    .pay { display: flex; gap: 16px; align-items: center; margin-top: 14px; padding: 10px; border: 1px solid #111; }
+    .pay svg { display: block; width: 34mm; height: 34mm; flex: none; }
+    .pay b { font-size: 14px; }
+    .thanks { margin-top: 16px; text-align: center; }
+    @media print {
+      body { padding: 0; background: #fff; }
+      .sheet { max-width: none; padding: 0; }
+      .tools { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="tools">
+    <button type="button" onclick="window.print()">In bill</button>
+    <a href="/admin/don-hang/<%= order.id %>">Quay lại đơn hàng</a>
+  </div>
+
+  <div class="sheet">
+    <header>
+      <div>
+        <h1><%= shopName %></h1>
+        <% if (stores[0]) { %><p class="muted"><%= stores[0].address %>, <%= stores[0].city %></p><% } %>
+        <p class="muted">ĐT: <%= site.phone %></p>
+      </div>
+      <div class="right">
+        <p class="code"><%= admin.orderCode(order.id) %></p>
+        <%# created_at lưu giờ UTC, bill hiện theo giờ Việt Nam %>
+        <% const d = new Date(order.created_at.replace(' ', 'T').slice(0, 19) + 'Z'); d.setUTCHours(d.getUTCHours() + 7); const iso = d.toISOString(); %>
+        <p class="muted"><%= iso.slice(8, 10) %>/<%= iso.slice(5, 7) %>/<%= iso.slice(0, 4) %> <%= iso.slice(11, 16) %></p>
+      </div>
+    </header>
+
+    <h2>Người nhận</h2>
+    <p><b><%= order.name %></b> · <%= order.phone %></p>
+    <p><%= order.address %></p>
+    <% if (order.note) { %><p class="muted">Ghi chú: <%= order.note %></p><% } %>
+
+    <h2>Sản phẩm</h2>
+    <table>
+      <thead><tr><th>Mã</th><th>Tên</th><th class="num">SL</th><th class="num">Đơn giá</th><th class="num">Thành tiền</th></tr></thead>
+      <tbody>
+        <% for (const item of items) { %>
+          <tr>
+            <td><%= item.code || '' %></td>
+            <td><%= item.name %><% const v = [item.color, item.size && `size ${item.size_label || item.size}`].filter(Boolean).join(' · '); if (v) { %><br><span class="muted"><%= v %></span><% } %></td>
+            <td class="num"><%= item.qty %></td>
+            <td class="num"><%= formatPrice(item.price) %></td>
+            <td class="num"><%= formatPrice(item.price * item.qty) %></td>
+          </tr>
+        <% } %>
+      </tbody>
+      <tfoot><tr><th colspan="4">Tổng cộng</th><th class="num"><%= formatPrice(order.total) %></th></tr></tfoot>
+    </table>
+
+    <% if (order.payment_status === 'paid') { %>
+      <div class="pay"><p><b>Đã thanh toán</b> · <%= admin.methods[order.payment_method] %></p></div>
+    <% } else if (transfer) { %>
+      <div class="pay">
+        <%- transfer.svg %>
+        <div>
+          <p><b>Quét mã để chuyển khoản</b></p>
+          <p><%= transfer.bank.name %> · <b><%= transfer.bank.account %></b></p>
+          <% if (transfer.bank.holder) { %><p><%= transfer.bank.holder %></p><% } %>
+          <p>Số tiền: <b><%= formatPrice(order.total) %></b></p>
+          <p>Nội dung: <b><%= transfer.content %></b></p>
+          <% if (order.payment_method === 'cod') { %><p class="muted">Hoặc trả tiền mặt khi nhận hàng.</p><% } %>
+        </div>
+      </div>
+    <% } else { %>
+      <div class="pay"><p><b>Thu khi giao hàng:</b> <%= formatPrice(order.total) %></p></div>
+    <% } %>
+
+    <p class="thanks muted">Cảm ơn bạn đã mua hàng tại <%= shopName %>.</p>
+  </div>
+</body>
+</html>

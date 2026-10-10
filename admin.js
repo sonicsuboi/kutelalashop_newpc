@@ -11,6 +11,7 @@ const { ORDER_STATUS, PAYMENT_METHOD, PAYMENT_STATUS, orderCode, cancelOrder, ma
 const { syncProductMedia, prefixOf } = require('./media');
 const storage = require('./storage');
 const { saveSite } = require('./site');
+const { BANKS, transferQr } = require('./vietqr');
 const { sourceLabel, SEARCH_ENGINES } = require('./tracking');
 const { hashPassword } = require('./customers');
 const ah = require('./async-handler');
@@ -57,7 +58,7 @@ router.use((req, res, next) => {
   res.set('Cache-Control', 'no-store');
   res.locals.admin = {
     statuses: ORDER_STATUS, methods: PAYMENT_METHOD, payments: PAYMENT_STATUS,
-    categories: CATEGORIES, groups: GROUPS, codePrefixes: CODE_PREFIXES, orderCode, sourceLabel, section: req.path.split('/')[1] || '',
+    categories: CATEGORIES, groups: GROUPS, banks: BANKS, codePrefixes: CODE_PREFIXES, orderCode, sourceLabel, section: req.path.split('/')[1] || '',
   };
   next();
 });
@@ -158,6 +159,21 @@ router.get('/don-hang', ah(async (req, res) => {
 }));
 
 const getOrder = (id) => db.one('SELECT * FROM orders WHERE id = ?', [Number(id)]);
+
+// Bill để in kèm hàng. Đơn chưa thu tiền thì có mã QR chuyển khoản (số tiền và mã đơn điền sẵn).
+router.get('/don-hang/:id(\\d+)/in', ah(async (req, res, next) => {
+  const order = await getOrder(req.params.id);
+  if (!order) return next();
+  res.render('admin/bill', {
+    title: `Bill ${orderCode(order.id)}`,
+    order,
+    items: await db.query(`
+      SELECT i.*, p.code FROM order_items i LEFT JOIN products p ON p.id = i.product_id
+      WHERE i.order_id = ? ORDER BY i.id`, [order.id]),
+    stores: await db.query('SELECT * FROM stores ORDER BY id LIMIT 1'),
+    transfer: order.payment_status === 'paid' ? null : await transferQr(res.locals.site, order.total, orderCode(order.id)),
+  });
+}));
 
 router.get('/don-hang/:id(\\d+)', ah(async (req, res, next) => {
   const order = await getOrder(req.params.id);
@@ -546,6 +562,9 @@ router.post('/thong-tin', ah(async (req, res) => {
     description: text(req.body.description).slice(0, 200),
     zalo: /^0\d{9,10}$/.test(zaloPhone) ? `https://zalo.me/${zaloPhone}` : zalo,
     facebook: /^[A-Za-z0-9.]{3,60}$/.test(facebook) ? `https://m.me/${facebook}` : facebook,
+    bank_bin: Object.hasOwn(BANKS, req.body.bank_bin) ? req.body.bank_bin : '',
+    bank_account: text(req.body.bank_account).replace(/[\s.-]/g, '').slice(0, 24),
+    bank_holder: text(req.body.bank_holder).slice(0, 80),
     google_verify: (/content=["']([^"']+)["']/.exec(verify) || [null, verify])[1].slice(0, 120),
   };
   const errors = {};
@@ -553,6 +572,8 @@ router.post('/thong-tin', ah(async (req, res) => {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) errors.email = 'Email chưa đúng.';
   if (!/\d/.test(values.phone)) errors.phone = 'Vui lòng nhập số điện thoại.';
   if (!values.description) errors.description = 'Vui lòng nhập câu giới thiệu.';
+  if (values.bank_account && !/^[0-9A-Za-z]{4,24}$/.test(values.bank_account)) errors.bank = 'Số tài khoản chỉ gồm chữ và số.';
+  else if (Boolean(values.bank_bin) !== Boolean(values.bank_account)) errors.bank = 'Chọn ngân hàng và nhập số tài khoản, hoặc để trống cả hai.';
   if (values.zalo && !/^https:\/\/(zalo\.me|chat\.zalo\.me|oa\.zalo\.me)\/[^\s"'<>]+$/.test(values.zalo)) {
     errors.zalo = 'Nhập số điện thoại Zalo của shop, hoặc link dạng https://zalo.me/...';
   }

@@ -7,6 +7,19 @@
   <% } else { %>
     <p>Cảm ơn bạn. Mã đơn hàng của bạn là <b><%= code %></b>. Tư vấn viên sẽ gọi điện xác nhận trong thời gian sớm nhất.</p>
   <% } %>
+  <% if (transfer) { %>
+    <div class="transfer">
+      <div class="transfer-qr"><%- transfer.svg %></div>
+      <dl>
+        <dt>Ngân hàng</dt><dd><%= transfer.bank.name %></dd>
+        <dt>Số tài khoản</dt><dd><b><%= transfer.bank.account %></b></dd>
+        <% if (transfer.bank.holder) { %><dt>Chủ tài khoản</dt><dd><%= transfer.bank.holder %></dd><% } %>
+        <dt>Số tiền</dt><dd><b><%= formatPrice(total) %></b></dd>
+        <dt>Nội dung</dt><dd><b><%= transfer.content %></b></dd>
+      </dl>
+      <p class="muted">Mở app ngân hàng, chọn quét QR: số tiền và nội dung đã điền sẵn. Shop xác nhận đơn sau khi nhận được tiền.</p>
+    </div>
+  <% } %>
   <a class="more" href="/san-pham">Tiếp tục xem sản phẩm</a>
   <a class="more" href="/tra-cuu-don?ma=<%= code %>">Tra cứu đơn hàng</a>
 </section>

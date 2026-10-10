@@ -17,11 +17,12 @@
 <div class="scroll">
   <table class="table">
     <thead>
-      <tr><th>Mã</th><th>Sản phẩm</th><th>Danh mục</th><th class="num">Giá sỉ</th><th class="num">Giá bán</th><th class="num">Ảnh</th><th class="num">Còn</th><th class="num">Lượt xem</th><th class="num">Yêu thích</th><th class="num">Đánh giá</th></tr>
+      <tr><th>Hình</th><th>Mã</th><th>Sản phẩm</th><th>Danh mục</th><th class="num">Giá sỉ</th><th class="num">Giá bán</th><th class="num">Số ảnh</th><th class="num">Còn</th><th class="num">Lượt xem</th><th class="num">Yêu thích</th><th class="num">Đánh giá</th></tr>
     </thead>
     <tbody>
       <% for (const p of products) { %>
-        <tr data-row="<%= `${p.name} ${p.code || ''}` %>" data-name="<%= p.name %>" data-code="<%= p.code || '' %>" data-href="/admin/san-pham/<%= p.id %>">
+        <tr data-row="<%= `${p.name} ${p.code || ''}` %>" data-name="<%= p.name %>" data-code="<%= p.code || '' %>" data-href="/admin/san-pham/<%= p.id %>" data-img="<%= p.image_url || '' %>">
+          <td class="thumb-cell"><a href="/admin/san-pham/<%= p.id %>" tabindex="-1" aria-hidden="true"><% if (p.image_url) { %><img class="thumb" src="<%= p.image_url %>" alt="" loading="lazy"><% } else { %><span class="thumb thumb-empty">Chưa có</span><% } %></a></td>
           <td><%= p.code || '—' %></td>
           <td><a href="/admin/san-pham/<%= p.id %>"><b><%= p.name %></b></a></td>
           <td><%= admin.categories[p.category] || p.category %></td>
@@ -74,7 +75,11 @@
       name.textContent = el.dataset.name;
       const code = document.createElement('span');
       code.textContent = el.dataset.code;
-      li.append(name, code);
+      // hình nhỏ đầu mỗi dòng gợi ý để nhận ra sản phẩm ngay
+      const img = document.createElement(el.dataset.img ? 'img' : 'span');
+      img.className = 'thumb';
+      if (el.dataset.img) { img.src = el.dataset.img; img.alt = ''; }
+      li.append(img, name, code);
       return li;
     }));
     active = -1;

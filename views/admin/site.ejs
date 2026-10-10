@@ -39,6 +39,29 @@
     </label>
   </div>
 
+  <h2>Tài khoản nhận chuyển khoản</h2>
+  <p class="muted">Khai báo đủ thì giỏ hàng có lựa chọn “Chuyển khoản ngân hàng” và bill in kèm mã QR (khách quét là có sẵn số tiền và mã đơn). Để trống thì không dùng.</p>
+  <div class="row">
+    <label class="field">
+      <span>Ngân hàng</span>
+      <select name="bank_bin">
+        <option value="">Không dùng</option>
+        <% for (const [bin, name] of Object.entries(admin.banks).sort((a, b) => a[1].localeCompare(b[1]))) { %>
+          <option value="<%= bin %>" <%= values.bank_bin === bin ? 'selected' : '' %>><%= name %></option>
+        <% } %>
+      </select>
+    </label>
+    <label class="field">
+      <span>Số tài khoản</span>
+      <input type="text" name="bank_account" value="<%= values.bank_account || '' %>" maxlength="30" inputmode="numeric">
+    </label>
+    <label class="field">
+      <span>Chủ tài khoản</span>
+      <input type="text" name="bank_holder" value="<%= values.bank_holder || '' %>" maxlength="80">
+    </label>
+  </div>
+  <% if (errors.bank) { %><p class="error"><%= errors.bank %></p><% } %>
+
   <h2>Hiển thị trên Google</h2>
   <label class="field">
     <span>Câu giới thiệu web</span>
