@@ -652,24 +652,30 @@ app.get('/gio-hang/cam-on', ah(async (req, res) => {
 
 // Tra cứu đơn hàng cho khách không có tài khoản: cần đúng cả mã đơn và số điện thoại đã đặt
 app.get('/tra-cuu-don', (req, res) => {
-  res.render('order-lookup', { title: 'Tra cứu đơn hàng', values: { code: orderIdFromCode(req.query.ma) ? req.query.ma : '', phone: '' }, order: null, notFound: false });
+  res.render('order-lookup', { title: 'Tra cứu đơn hàng', values: { code: orderIdFromCode(req.query.ma) ? req.query.ma : '', phone: '' }, orders: [], searched: false, full: false });
 });
 
+// Tra theo số điện thoại đã đặt hàng. Chỉ nhập số điện thoại: liệt kê các đơn của số đó nhưng giấu địa chỉ
+// giao hàng (ai biết số điện thoại cũng tra được). Nhập thêm đúng mã đơn: hiện đầy đủ một đơn đó.
 app.post('/tra-cuu-don', ah(async (req, res) => {
   const digits = (s) => String(s || '').replace(/\D/g, '').replace(/^84/, '0');
   const values = { code: formText(req.body.code).toUpperCase().replace(/\s/g, ''), phone: formText(req.body.phone) };
-  let order = await db.one('SELECT * FROM orders WHERE id = ?', [orderIdFromCode(values.code)]);
-  if (order && (!digits(values.phone) || digits(order.phone) !== digits(values.phone))) order = null;
-  if (order) {
+  const phone = digits(values.phone);
+  let orders = phone.length < 9 ? [] : (await db.query('SELECT * FROM orders ORDER BY id DESC LIMIT 2000'))
+    .filter((o) => digits(o.phone) === phone);
+  const full = Boolean(values.code);
+  if (full) orders = orders.filter((o) => o.id === orderIdFromCode(values.code));
+  orders = orders.slice(0, 20);
+  for (const order of orders) {
     order.items = await db.query(`
       SELECT i.name, i.color, i.size, i.size_label, i.qty, i.price, p.slug, p.image_url FROM order_items i
       LEFT JOIN products p ON p.id = i.product_id WHERE i.order_id = ? ORDER BY i.id`, [order.id]);
   }
-  res.status(order ? 200 : 404).render('order-lookup', {
-    title: 'Tra cứu đơn hàng', values, order, notFound: !order, statuses: ORDER_STATUS, payments: PAYMENT_STATUS, methods: PAYMENT_METHOD, orderCode,
+  res.status(orders.length ? 200 : 404).render('order-lookup', {
+    title: 'Tra cứu đơn hàng', values, orders, searched: true, full,
+    statuses: ORDER_STATUS, payments: PAYMENT_STATUS, methods: PAYMENT_METHOD, orderCode,
   });
 }));
-
 // VNPay đưa khách quay về đây sau khi thanh toán
 app.get('/thanh-toan/vnpay/ket-qua', ah(async (req, res) => {
   const { order } = await settleVnpay(req.query);

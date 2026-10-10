@@ -1238,3 +1238,6 @@ main {
 .cart-sum { display: flex; justify-content: space-between; padding-top: 14px; font-size: 13px; }
 .cart-sum-note { margin-top: 6px; font-size: 12px; color: var(--muted); text-align: right; }
 .order-sums { text-align: right; }
+
+.lookup-form { max-width: 520px; margin: 0 auto; }
+.lookup-note { margin: -12px 0 20px; }

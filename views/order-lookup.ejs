@@ -2,26 +2,31 @@
 
 <section class="intro">
   <h1><%= title %></h1>
-  <p>Nhập mã đơn hàng (ví dụ KT00012) và số điện thoại đã dùng khi đặt.</p>
+  <p>Nhập số điện thoại đã dùng khi đặt hàng để xem các đơn của bạn.</p>
 </section>
 
-<section class="account">
-  <form class="form" action="/tra-cuu-don" method="post">
-    <% if (notFound) { %><p class="option-error" role="alert">Không tìm thấy đơn hàng với mã và số điện thoại này.</p><% } %>
-    <label class="field">
-      <span>Mã đơn hàng</span>
-      <input type="text" name="code" value="<%= values.code %>" maxlength="12" autocomplete="off" required>
-    </label>
+<section class="account account-wide">
+  <form class="form lookup-form" action="/tra-cuu-don" method="post">
+    <% if (searched && !orders.length) { %>
+      <p class="option-error" role="alert"><%= full ? 'Không tìm thấy đơn hàng với số điện thoại và mã đơn này.' : 'Không tìm thấy đơn hàng nào đặt bằng số điện thoại này.' %></p>
+    <% } %>
     <label class="field">
       <span>Số điện thoại đặt hàng</span>
       <input type="tel" name="phone" value="<%= values.phone %>" maxlength="15" autocomplete="tel" required>
     </label>
+    <label class="field">
+      <span>Mã đơn hàng (không bắt buộc)</span>
+      <input type="text" name="code" value="<%= values.code %>" maxlength="12" autocomplete="off" placeholder="vd: KT00012">
+    </label>
     <button class="btn btn-dark" type="submit">Tra cứu</button>
   </form>
 
-  <% if (order) { %>
-    <h2>Kết quả</h2>
-    <%- include('partials/order-card', { order }) %>
+  <% if (orders.length) { %>
+    <h2><%= full ? 'Kết quả' : `${orders.length} đơn hàng` %></h2>
+    <% if (!full) { %><p class="account-alt lookup-note">Để xem địa chỉ giao hàng của một đơn, nhập thêm mã đơn đó.</p><% } %>
+    <% for (const order of orders) { %>
+      <%- include('partials/order-card', { order, hideAddress: !full }) %>
+    <% } %>
   <% } %>
 
   <p class="account-alt">Cần hỗ trợ về đơn hàng? <a href="/lien-he">Liên hệ shop</a></p>

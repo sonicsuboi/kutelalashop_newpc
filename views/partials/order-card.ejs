@@ -36,7 +36,7 @@
 
   <footer>
     <div>
-      <p class="muted">Giao tới: <%= order.address %></p>
+      <% if (!locals.hideAddress) { %><p class="muted">Giao tới: <%= order.address %></p><% } %>
       <p class="order-pay">
         Thanh toán: <b><%= methods[order.payment_method] %></b> ·
         <span class="order-tag pay-<%= order.payment_status %>"><%= payments[order.payment_status] %></span>
