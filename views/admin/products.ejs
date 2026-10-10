@@ -23,9 +23,9 @@
     </thead>
     <tbody>
       <% for (const p of products) { %>
-        <tr data-row="<%= `${p.name} ${p.code || ''}` %>" data-name="<%= p.name %>" data-code="<%= p.code || '' %>" data-href="/admin/san-pham/<%= p.id %>" data-img="<%= p.image_url || '' %>">
+        <tr data-row="<%= `${p.name} ${p.code || ''} ${p.supplier_code || ''}` %>" data-name="<%= p.name %>" data-code="<%= p.code || '' %>" data-href="/admin/san-pham/<%= p.id %>" data-img="<%= p.image_url || '' %>">
           <td class="thumb-cell"><a href="/admin/san-pham/<%= p.id %>" tabindex="-1" aria-hidden="true"><% if (p.image_url) { %><img class="thumb" src="<%= p.image_url %>" alt="" loading="lazy"><% } else { %><span class="thumb thumb-empty">Chưa có</span><% } %></a></td>
-          <td><%= p.code || '—' %></td>
+          <td><%= p.code || '—' %><% if (p.supplier_code) { %><br><span class="muted small">NCC: <%= p.supplier_code %></span><% } %></td>
           <td><a href="/admin/san-pham/<%= p.id %>"><b><%= p.name %></b></a><% if (p.hidden) { %> <span class="tag">Đang ẩn</span><% } %></td>
           <td><%= admin.categories[p.category] || p.category %></td>
           <td class="num"><%= p.cost === null ? '—' : formatPrice(p.cost) %></td>

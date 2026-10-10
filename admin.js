@@ -217,7 +217,7 @@ router.get('/san-pham', ah(async (req, res) => {
   let products = await db.query(`${PRODUCT_ROWS} ORDER BY p.id DESC`);
   // khớp khi tên hoặc mã có đủ mọi từ đã gõ, giống cách lọc ngay trên trang
   const words = fold(q).split(/\s+/).filter(Boolean);
-  if (words.length) products = products.filter((p) => words.every((w) => fold(`${p.name} ${p.code || ''}`).includes(w)));
+  if (words.length) products = products.filter((p) => words.every((w) => fold(`${p.name} ${p.code || ''} ${p.supplier_code || ''}`).includes(w)));
   res.render('admin/products', { title: 'Kho sản phẩm', products, q, deleted: req.query.xoa === '1' });
 }));
 
@@ -232,6 +232,7 @@ function readProductForm(body, category) {
     name: text(body.name),
     badge: text(body.badge).slice(0, 30) || null,
     description: text(body.description).slice(0, 1000) || null,
+    supplier_code: text(body.supplier_code).slice(0, 40) || null,
     cost,
     // có giá sỉ thì giá bán tính theo pricing.js, không thì dùng giá nhập tay
     price: cost !== null ? retailPrice(category, cost) : int(body.price),
@@ -265,10 +266,10 @@ router.post('/san-pham/moi', ah(async (req, res) => {
   const code = await nextCode(db, category);
   const slug = `${fold(values.name).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${code.toLowerCase()}`;
   const { id } = await db.one(`
-    INSERT INTO products (slug, code, name, category, badge, cost, price, size_min, size_max, size_labels, description)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO products (slug, code, name, category, badge, cost, price, size_min, size_max, size_labels, description, supplier_code)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     RETURNING id
-  `, [slug, code, values.name, category, values.badge, values.cost, values.price, values.size_min, values.size_max, values.size_labels, values.description]);
+  `, [slug, code, values.name, category, values.badge, values.cost, values.price, values.size_min, values.size_max, values.size_labels, values.description, values.supplier_code]);
   res.redirect(`/admin/san-pham/${id}?ok=1`);
 }));
 
@@ -306,9 +307,9 @@ router.post('/san-pham/:id(\\d+)', ah(async (req, res, next) => {
     return renderProduct(res, { ...product, ...req.body, cost: text(req.body.cost) }, { errors, status: 400 });
   }
   await db.run(`
-    UPDATE products SET name = ?, badge = ?, description = ?, cost = ?, price = ?, size_min = ?, size_max = ?, size_labels = ?
+    UPDATE products SET name = ?, badge = ?, description = ?, cost = ?, price = ?, size_min = ?, size_max = ?, size_labels = ?, supplier_code = ?
     WHERE id = ?
-  `, [values.name, values.badge, values.description, values.cost, values.price, values.size_min, values.size_max, values.size_labels, product.id]);
+  `, [values.name, values.badge, values.description, values.cost, values.price, values.size_min, values.size_max, values.size_labels, values.supplier_code, product.id]);
 
   const updated = await getProduct(product.id);
   for (const v of await variantsOf(db, updated)) {

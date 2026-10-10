@@ -49,6 +49,12 @@
 <% if (errors.size) { %><p class="error"><%= errors.size %></p><% } %>
 
 <label class="field">
+  <span>Mã nhà cung cấp</span>
+  <input type="text" name="supplier_code" value="<%= v.supplier_code || '' %>" maxlength="40" placeholder="vd: BDGĐ229">
+  <small>Mã của bên bán sỉ, để đặt lại hàng. Chỉ hiện trong trang quản trị, khách không thấy; tìm trong Kho sản phẩm bằng mã này cũng được.</small>
+</label>
+
+<label class="field">
   <span>Mô tả</span>
   <textarea name="description" rows="3" maxlength="1000"><%= v.description || '' %></textarea>
 </label>
