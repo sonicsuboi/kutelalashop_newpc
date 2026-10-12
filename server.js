@@ -261,6 +261,21 @@ app.get('/', ah(async (req, res) => {
   const featured = Object.keys(CATEGORIES)
     .map((key) => newest.find((p) => p.category === key && p.stock_total) || newest.find((p) => p.category === key))
     .filter(Boolean);
+
+  // Khung trình chiếu ở ô lớn đầu tiên: cũng mỗi danh mục một mẫu, nhưng KHÁC mẫu đang hiện ở các ô bên cạnh
+  // để không trùng. Danh mục đầu tiên không có ô riêng (khung trình chiếu chiếm chỗ) nên dùng luôn mẫu nổi bật.
+  // Danh mục chỉ có một sản phẩm thì vẫn lấy sản phẩm đó nhưng đổi sang một ảnh khác của nó; không có ảnh khác thì bỏ qua.
+  const showcase = [];
+  for (const [i, top] of featured.entries()) {
+    const others = newest.filter((p) => p.category === top.category && p.id !== top.id && p.image_url);
+    const other = i === 0 ? top : others.find((p) => p.stock_total) || others[0];
+    if (other) { showcase.push(other); continue; }
+    const photo = await db.one(
+      "SELECT url FROM product_images WHERE product_id = ? AND kind = 'image' AND url <> ? ORDER BY sort DESC, id DESC LIMIT 1",
+      [top.id, top.image_url || '']);
+    // chỉ có đúng một ảnh thì bỏ qua: trang đó sẽ giống hệt ô bên cạnh
+    if (photo) showcase.push({ ...top, image_url: photo.url });
+  }
   // Danh mục chưa có ảnh riêng thì lấy ảnh đại diện của sản phẩm mới nhất trong danh mục đó,
   // để dòng nào rê chuột vào cũng có ảnh nền chứ không chỉ nền đen
   const covers = Object.fromEntries((await db.query(`
@@ -275,6 +290,7 @@ app.get('/', ah(async (req, res) => {
   res.render('home', {
     title: 'Trang chủ',
     featured,
+    showcase,
     counts: res.locals.categoryCounts,
     heroImage: findImage('hero', '/images/hero.svg'),
     storyImage: findImage('story'),

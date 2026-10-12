@@ -41,7 +41,7 @@
   <aside class="contact-side">
     <h2>Liên hệ trực tiếp</h2>
     <p>Email: <a href="mailto:<%= site.email %>"><%= site.email %></a></p>
-    <p>Điện thoại: <a href="tel:<%= site.phone.replace(/\s/g, '') %>"><%= site.phone %></a></p>
+    <p>Hotline: <a href="tel:<%= site.phone.replace(/[^\d+]/g, '') %>"><b><%= site.phone %></b></a> (bấm để gọi)</p>
     <% if (site.zalo) { %><p><a href="<%= site.zalo %>" target="_blank" rel="noopener">Nhắn tin qua Zalo</a></p><% } %>
     <% if (site.facebook) { %><p><a href="<%= site.facebook %>" target="_blank" rel="noopener">Nhắn tin qua Messenger</a></p><% } %>
     <h2>Đơn hàng</h2>

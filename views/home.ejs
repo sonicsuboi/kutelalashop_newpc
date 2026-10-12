@@ -38,7 +38,37 @@
       để lưới không đều tăm tắp. Nhãn trên ảnh là tên danh mục. %>
   <ul class="grid grid-feature grid-mosaic">
     <% featured.forEach((product, i) => { %>
-      <%- include('partials/card', { product: { ...product, badge: categories[product.category] }, big: i === 0 || i === 5 }) %>
+      <% if (i === 0) { %>
+        <%# Ô lớn đầu tiên là khung trình chiếu: mỗi dòng hàng một mẫu (khác mẫu ở các ô bên cạnh để không trùng), trang cuối là liên hệ %>
+        <li class="feature-show" data-slideshow>
+          <% showcase.forEach((p, n) => { %>
+            <a class="show-slide<%= n === 0 ? ' active' : '' %>" data-slide href="/san-pham/<%= p.slug %>"<% if (p.image_url) { %> style="background-image: url('<%= p.image_url %>')"<% } %>>
+              <span class="eyebrow"><%= categories[p.category] %></span>
+              <b><%= p.name %></b>
+              <span class="show-price"><%= formatPrice(p.price) %></span>
+              <span class="btn">Xem chi tiết</span>
+            </a>
+          <% }) %>
+          <% const callNumber = site.phone.replace(/[^\d+]/g, ''); %>
+          <div class="show-slide show-contact" data-slide style="background-image: url('/images/mosaic-1.jpg')">
+            <span class="eyebrow">Liên hệ</span>
+            <b>Hỏi shop trước khi mua</b>
+            <span class="show-price">Tư vấn size, xem thêm ảnh thật, chốt đơn nhanh.</span>
+            <span class="show-actions">
+              <% if (site.zalo) { %><a class="btn" href="<%= site.zalo %>" target="_blank" rel="noopener">Nhắn Zalo</a><% } %>
+              <% if (callNumber) { %><a class="btn btn-ghost" href="tel:<%= callNumber %>">Gọi <%= site.phone %></a><% } %>
+              <a class="btn btn-ghost" href="/lien-he">Gửi tin nhắn</a>
+            </span>
+          </div>
+          <div class="show-bars" aria-hidden="true">
+            <% for (let n = 0; n <= showcase.length; n++) { %><i data-bar class="<%= n === 0 ? 'on' : '' %>"></i><% } %>
+          </div>
+          <button class="show-nav prev" type="button" data-prev aria-label="Trang trước">‹</button>
+          <button class="show-nav next" type="button" data-next aria-label="Trang sau">›</button>
+        </li>
+      <% } else { %>
+        <%- include('partials/card', { product: { ...product, badge: categories[product.category] }, big: i === 5 }) %>
+      <% } %>
       <% if (i === 2) { %>
         <li class="mosaic-tile mosaic-accent" style="--photo: url('/images/mosaic-1.jpg')">
           <span class="eyebrow">Hàng mới về mỗi tuần</span>

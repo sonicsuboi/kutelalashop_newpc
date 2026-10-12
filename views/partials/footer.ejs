@@ -91,9 +91,17 @@
     </form>
   </dialog>
 
-  <%# Nút chat nổi ở góc màn hình: bấm là mở Zalo / Messenger để nhắn cho shop. Chỉ hiện khi đã khai báo link ở trang quản trị. %>
-  <% if (site.zalo || site.facebook) { %>
+  <%# Các nút liên hệ nổi ở góc màn hình: gọi hotline (số điện thoại của shop ở trang quản trị), Zalo, Messenger.
+      Zalo và Messenger chỉ hiện khi đã khai báo link. Trên điện thoại bấm nút gọi là quay số luôn. %>
+  <% const hotline = site.phone.replace(/[^\d+]/g, ''); %>
+  <% if (hotline || site.zalo || site.facebook) { %>
     <div class="chat-float">
+      <% if (hotline) { %>
+        <a class="chat-call" href="tel:<%= hotline %>" aria-label="Gọi hotline <%= site.phone %>" title="Gọi <%= site.phone %>">
+          <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6.600 10.800c1.400 2.800 3.800 5.100 6.600 6.600l2.200-2.200c.3-.3.700-.4 1-.2 1.100.4 2.300.6 3.600.6.600 0 1 .4 1 1V20c0 .600-.4 1-1 1C10.600 21 3 13.400 3 4c0-.6.4-1 1-1h3.500c.600 0 1 .4 1 1 0 1.300.2 2.500.6 3.600.1.300 0 .7-.2 1z"/></svg>
+          <span><%= site.phone %></span>
+        </a>
+      <% } %>
       <% if (site.zalo) { %><a class="chat-zalo" href="<%= site.zalo %>" target="_blank" rel="noopener" aria-label="Nhắn tin cho shop qua Zalo">
           <svg width="56" height="56" viewBox="0 0 56 56" aria-hidden="true">
             <rect width="56" height="56" rx="16" fill="#0068ff"/>

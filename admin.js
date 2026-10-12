@@ -600,6 +600,15 @@ router.get('/dem', ah(async (req, res) => {
   res.json(row);
 }));
 
+// Chọn ảnh đại diện của sản phẩm (ảnh hiện ở danh sách, giỏ hàng, đơn hàng) trong số các ảnh đã tải lên
+router.post('/san-pham/:id(\\d+)/anh-dai-dien', ah(async (req, res, next) => {
+  const product = await getProduct(req.params.id);
+  if (!product) return next();
+  const image = await db.one("SELECT url FROM product_images WHERE product_id = ? AND url = ? AND kind = 'image'", [product.id, text(req.body.url)]);
+  if (image) await db.run('UPDATE products SET image_url = ? WHERE id = ?', [image.url, product.id]);
+  res.redirect(`/admin/san-pham/${product.id}#anh`);
+}));
+
 // Xoá một đánh giá không phù hợp
 router.post('/san-pham/:id(\\d+)/danh-gia/:reviewId(\\d+)/xoa', ah(async (req, res) => {
   await db.run('DELETE FROM reviews WHERE id = ? AND product_id = ?', [Number(req.params.reviewId), Number(req.params.id)]);

@@ -219,3 +219,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--ink); outli
 
 .quick-links { align-items: center; }
 .card .check { min-height: 0; margin: 6px 0; }
+
+/* Ảnh đang làm ảnh đại diện trong danh sách ảnh của sản phẩm */
+.media-list li.is-cover img { outline: 3px solid var(--ink); outline-offset: -3px; }
+.media-list form { margin-top: 2px; }

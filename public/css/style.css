@@ -1291,3 +1291,106 @@ main {
 .order-returned .order-item-name, .order-returned .order-item-total, .order-returned .order-item-info > .muted { color: var(--muted); text-decoration: line-through; }
 .order-returned .order-thumb img { opacity: .45; }
 .order-return-tag { display: inline-block; margin-top: 4px; padding: 2px 8px; font-size: 11px; font-weight: 700; color: #fff; background: #b3261e; }
+
+/* Trang chủ: khung trình chiếu chiếm ô lớn đầu tiên của lưới nổi bật (2 cột x 2 hàng).
+   Mỗi trang là ảnh phủ kín khung, chữ trắng ở góc dưới trên lớp tối. */
+.feature-show {
+  position: relative;
+  isolation: isolate;
+  grid-column: span 2;
+  grid-row: span 2;
+  min-height: 520px;
+  margin-bottom: 56px;
+  color: #fff;
+  background: #0a0a0a;
+  overflow: hidden;
+}
+.show-slide {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 40px 36px;
+  background: #1a1a1a center / cover no-repeat;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .7s ease, visibility .7s;
+}
+.show-slide.active { opacity: 1; visibility: visible; }
+.show-slide::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(to top, rgba(0, 0, 0, .8), rgba(0, 0, 0, .05) 60%);
+}
+.show-slide { isolation: isolate; }
+/* chữ trượt nhẹ lên mỗi khi đổi trang */
+.show-slide > * { transform: translateY(12px); opacity: 0; transition: transform .6s ease .15s, opacity .6s ease .15s; }
+.show-slide.active > * { transform: none; opacity: 1; }
+.show-slide b { max-width: 520px; font-size: clamp(20px, 2.4vw, 34px); font-weight: 800; line-height: 1.15; text-transform: uppercase; }
+.show-slide .eyebrow { padding: 4px 10px; color: var(--ink); background: var(--accent); }
+.show-price { font-size: 15px; color: #e6e6e6; }
+.show-slide .btn { margin-top: 12px; }
+.show-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.show-actions .btn-ghost { border-color: #fff; }
+.show-actions .btn-ghost:hover { color: var(--ink); }
+/* các vạch trên đầu khung, vạch sáng là trang đang xem */
+.show-bars { position: absolute; z-index: 2; top: 14px; left: 14px; right: 14px; display: flex; gap: 4px; }
+.show-bars i { flex: 1; height: 3px; background: rgba(255, 255, 255, .35); transition: background .3s ease; }
+.show-bars i.on { background: var(--accent); }
+.show-nav { position: absolute; z-index: 2; bottom: 0; width: 44px; height: 44px; font-size: 24px; color: #fff; background: rgba(0, 0, 0, .45); }
+.show-nav:hover { color: var(--ink); background: var(--accent); }
+.show-nav.prev { right: 44px; }
+.show-nav.next { right: 0; }
+@media (max-width: 1000px) {
+  .feature-show { grid-row: auto; min-height: 0; aspect-ratio: 4 / 5; }
+}
+@media (max-width: 560px) {
+  .feature-show { margin-bottom: 36px; }
+  .show-slide { padding: 28px 20px 52px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .show-slide, .show-slide > * { transition: none; transform: none; }
+}
+/* Nút gọi hotline: tròn đen, rê chuột thì nở ra hiện số điện thoại. Vòng sóng nhẹ để dễ thấy. */
+.chat-float .chat-call {
+  position: relative;
+  justify-content: flex-start;
+  gap: 10px;
+  width: 56px;
+  height: 56px;
+  padding: 0 16px;
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 800;
+  background: var(--accent);
+  border-radius: 28px;
+  overflow: hidden;
+  white-space: nowrap;
+  transition: width .3s ease, transform .2s ease;
+}
+.chat-call svg { flex: none; }
+.chat-float .chat-call:hover, .chat-float .chat-call:focus-visible { width: 190px; transform: none; }
+.chat-call::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 2px solid var(--accent);
+  animation: call-ring 2.4s ease-out infinite;
+  pointer-events: none;
+}
+@keyframes call-ring { from { transform: scale(1); opacity: .9; } to { transform: scale(1.5); opacity: 0; } }
+@media (max-width: 560px) {
+  .chat-float .chat-call { width: 48px; height: 48px; padding: 0 12px; border-radius: 24px; }
+  .chat-float .chat-call:hover { width: 48px; }
+  .chat-call::after { width: 48px; height: 48px; }
+}
+@media (prefers-reduced-motion: reduce) { .chat-call::after { animation: none; opacity: 0; } }

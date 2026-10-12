@@ -339,3 +339,32 @@ document.querySelectorAll('form[action="/gio-hang/them"]').forEach((form) => {
     }
   });
 });
+
+// Khung trình chiếu ([data-slideshow]): tự chuyển trang mỗi 4 giây, dừng khi rê chuột hoặc khi khung
+// không nằm trong màn hình; có nút trước / sau và các vạch báo đang ở trang nào.
+document.querySelectorAll('[data-slideshow]').forEach((box) => {
+  const slides = [...box.querySelectorAll('[data-slide]')];
+  const bars = [...box.querySelectorAll('[data-bar]')];
+  if (slides.length < 2) return;
+  const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let current = 0;
+  let timer = null;
+  let visible = true;
+
+  const show = (i) => {
+    current = (i + slides.length) % slides.length;
+    slides.forEach((s, n) => s.classList.toggle('active', n === current));
+    bars.forEach((b, n) => b.classList.toggle('on', n === current));
+  };
+  const stop = () => { clearInterval(timer); timer = null; };
+  const play = () => { stop(); if (!calm && visible) timer = setInterval(() => show(current + 1), 4000); };
+
+  box.querySelector('[data-prev]').addEventListener('click', () => { show(current - 1); play(); });
+  box.querySelector('[data-next]').addEventListener('click', () => { show(current + 1); play(); });
+  box.addEventListener('mouseenter', stop);
+  box.addEventListener('mouseleave', play);
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; if (visible) play(); else stop(); }, { threshold: 0.3 }).observe(box);
+  }
+  play();
+});

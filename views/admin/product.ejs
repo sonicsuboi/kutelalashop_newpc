@@ -88,14 +88,22 @@
       <button class="btn" type="submit">Tải lên</button>
       <p class="muted" data-upload-status></p>
     </form>
-    <p class="muted">Video (.mp4, .mov) luôn hiện đầu tiên và tự chạy khi khách mở trang ở trang chi tiết, sau đó tới ảnh theo tên file; ảnh đầu tiên là ảnh đại diện. Video nên dưới 50 MB để khách tải nhanh.</p>
+    <p class="muted">Video (.mp4, .mov) luôn hiện đầu tiên và tự chạy khi khách mở trang ở trang chi tiết, sau đó tới ảnh theo tên file; ảnh đại diện mặc định là ảnh đầu tiên, bấm “Đặt làm ảnh đại diện” dưới ảnh khác để đổi. Video nên dưới 50 MB để khách tải nhanh.</p>
 
     <% if (media.length) { %>
       <ul class="media-list">
         <% for (const m of media) { const name = m.url.split('/').pop(); %>
-          <li>
+          <li class="<%= m.url === product.image_url ? 'is-cover' : '' %>">
             <% if (m.kind === 'video') { %><video src="<%= m.url %>" muted preload="metadata"></video><% } else { %><img src="<%= m.url %>" alt="" loading="lazy"><% } %>
             <span><%= name %></span>
+            <% if (m.url === product.image_url) { %>
+              <b class="tag st-new">Ảnh đại diện</b>
+            <% } else if (m.kind === 'image') { %>
+              <form action="/admin/san-pham/<%= product.id %>/anh-dai-dien" method="post">
+                <input type="hidden" name="url" value="<%= m.url %>">
+                <button class="link" type="submit">Đặt làm ảnh đại diện</button>
+              </form>
+            <% } %>
             <form action="/admin/san-pham/<%= product.id %>/xoa-file" method="post" onsubmit="return confirm('Xoá file <%= name %>?')">
               <input type="hidden" name="file" value="<%= name %>">
               <button class="link" type="submit">Xoá</button>
