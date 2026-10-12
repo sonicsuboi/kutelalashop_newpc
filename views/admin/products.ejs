@@ -19,7 +19,7 @@
 <div class="scroll">
   <table class="table">
     <thead>
-      <tr><th>Hình</th><th>Mã</th><th>Sản phẩm</th><th>Danh mục</th><th class="num">Giá sỉ</th><th class="num">Giá bán</th><th class="num">Số ảnh</th><th class="num">Còn</th><th class="num">Lượt xem</th><th class="num">Yêu thích</th><th class="num">Đánh giá</th></tr>
+      <tr><th>Hình</th><th>Mã</th><th>Sản phẩm</th><th>Danh mục</th><th class="num">Giá sỉ</th><th class="num">Giá bán</th><th class="num">Số ảnh</th><th class="num">Còn</th><th class="num">Lượt xem</th><th class="num">Yêu thích</th><th class="num">Đánh giá</th><th></th></tr>
     </thead>
     <tbody>
       <% for (const p of products) { %>
@@ -35,6 +35,7 @@
           <td class="num"><%= p.view_count %></td>
           <td class="num"><%= p.fav_count %></td>
           <td class="num"><%= p.review_count %></td>
+          <td><a class="small" href="/admin/san-pham/moi?tu=<%= p.id %>" title="Tạo sản phẩm mới theo sản phẩm này">Nhân bản</a></td>
         </tr>
       <% } %>
     </tbody>

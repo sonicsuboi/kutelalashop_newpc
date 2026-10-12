@@ -399,16 +399,29 @@ function readProductForm(body, category) {
   return { values, errors };
 }
 
-router.get('/san-pham/moi', (req, res) => {
-  res.render('admin/product-new', { title: 'Thêm sản phẩm', values: { has_size: '1', size_min: 35, size_max: 39 }, errors: {} });
-});
+// Thêm sản phẩm. Có ?tu=<id> là nhân bản: form điền sẵn theo sản phẩm đó, mã mới vẫn tự sinh theo danh mục.
+router.get('/san-pham/moi', ah(async (req, res) => {
+  const source = /^\d{1,9}$/.test(req.query.tu || '') ? await getProduct(req.query.tu) : null;
+  const values = source ? {
+    category: source.category, name: `${source.name} (bản sao)`, cost: source.cost, price: source.price, badge: source.badge,
+    description: source.description, supplier_code: source.supplier_code, size_labels: source.size_labels,
+    has_size: source.size_max > 0 ? '1' : '0', size_min: source.size_labels ? 35 : source.size_min, size_max: source.size_labels ? 39 : source.size_max,
+  } : { has_size: '1', size_min: 35, size_max: 39 };
+  res.render('admin/product-new', {
+    title: source ? 'Nhân bản sản phẩm' : 'Thêm sản phẩm', values, errors: {}, source,
+    nextCode: source ? await nextCode(db, source.category) : '',
+  });
+}));
 
 router.post('/san-pham/moi', ah(async (req, res) => {
   const category = Object.hasOwn(CATEGORIES, req.body.category) ? req.body.category : '';
   const { values, errors } = readProductForm(req.body, category || 'sneaker');
   if (!category) errors.category = 'Vui lòng chọn danh mục.';
+  const source = /^\d{1,9}$/.test(req.body.tu || '') ? await getProduct(req.body.tu) : null;
   if (Object.keys(errors).length) {
-    return res.status(400).render('admin/product-new', { title: 'Thêm sản phẩm', values: req.body, errors });
+    return res.status(400).render('admin/product-new', {
+      title: source ? 'Nhân bản sản phẩm' : 'Thêm sản phẩm', values: req.body, errors, source, nextCode: '',
+    });
   }
 
   const code = await nextCode(db, category);
@@ -418,6 +431,22 @@ router.post('/san-pham/moi', ah(async (req, res) => {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     RETURNING id
   `, [slug, code, values.name, category, values.badge, values.cost, values.price, values.size_min, values.size_max, values.size_labels, values.description, values.supplier_code]);
+
+  // Nhân bản: chép màu (tồn kho của bản mới để 0) và, nếu chọn, chép cả ảnh sang thư mục của mã mới
+  if (source) {
+    if (req.body.copy_colors === '1') {
+      for (const c of await colorsOf(db, source.id)) {
+        await db.run('INSERT INTO product_colors (product_id, name, hex, sole_hex, sort) VALUES (?, ?, ?, ?, ?)', [id, c.name, c.hex, c.sole_hex, c.sort]);
+      }
+    }
+    if (req.body.copy_media === '1' && source.code) {
+      const created = await getProduct(id);
+      for (const file of await storage.list(prefixOf(source))) {
+        await storage.copy(prefixOf(source) + file, prefixOf(created) + file);
+      }
+      await syncProductMedia(created);
+    }
+  }
   res.redirect(`/admin/san-pham/${id}?ok=1`);
 }));
 

@@ -1,9 +1,14 @@
 <%- include('head') %>
 
-<p class="crumb"><a href="/admin/san-pham">Kho sản phẩm</a> / Thêm sản phẩm</p>
+<p class="crumb"><a href="/admin/san-pham">Kho sản phẩm</a> / <%= title %></p>
 <h1><%= title %></h1>
 
+<% if (locals.source) { %>
+  <p class="notice">Tạo sản phẩm mới theo <a href="/admin/san-pham/<%= source.id %>"><b><%= source.code || `#${source.id}` %> · <%= source.name %></b></a>. Sửa những gì khác đi rồi bấm tạo<% if (nextCode) { %>; mã mới sẽ là <b><%= nextCode %></b> nếu giữ nguyên danh mục<% } %>.</p>
+<% } %>
+
 <form class="card wide" action="/admin/san-pham/moi" method="post">
+  <% if (locals.source) { %><input type="hidden" name="tu" value="<%= source.id %>"><% } %>
   <div class="row">
     <label class="field">
       <span>Danh mục</span>
@@ -23,6 +28,12 @@
   </div>
 
   <%- include('product-fields', { v: values, errors }) %>
+
+  <% if (locals.source) { %>
+    <h2>Chép từ sản phẩm gốc</h2>
+    <label class="check"><input type="checkbox" name="copy_colors" value="1" checked><span>Chép các màu (tồn kho của sản phẩm mới bắt đầu từ 0)</span></label>
+    <label class="check"><input type="checkbox" name="copy_media" value="1"><span>Chép cả ảnh và video (bỏ trống nếu sản phẩm mới có ảnh riêng)</span></label>
+  <% } %>
 
   <button class="btn" type="submit">Tạo sản phẩm</button>
   <p class="muted">Sau khi tạo, bạn thêm màu, nhập số lượng tồn kho và chép ảnh vào thư mục của sản phẩm.</p>

@@ -216,3 +216,6 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--ink); outli
 .return-box form { margin-top: 8px; min-width: 190px; }
 .return-box .field { margin-bottom: 8px; }
 .return-box .check { min-height: 0; margin: 4px 0 8px; }
+
+.quick-links { align-items: center; }
+.card .check { min-height: 0; margin: 6px 0; }

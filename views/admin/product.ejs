@@ -7,7 +7,10 @@
 <p class="crumb"><a href="/admin/san-pham">Kho sản phẩm</a> / <%= product.code || `#${product.id}` %></p>
 <div class="section-head">
   <h1><%= title %></h1>
-  <a href="/san-pham/<%= product.slug %>" target="_blank" rel="noopener">Xem trên trang bán hàng</a>
+  <div class="quick-links">
+    <a class="btn btn-light" href="/admin/san-pham/moi?tu=<%= product.id %>">Nhân bản sản phẩm</a>
+    <a href="/san-pham/<%= product.slug %>" target="_blank" rel="noopener">Xem trên trang bán hàng</a>
+  </div>
 </div>
 
 <% if (saved) { %><p class="notice ok" role="status">Đã lưu.</p><% } %>

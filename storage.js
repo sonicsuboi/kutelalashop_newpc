@@ -72,4 +72,10 @@ async function remove(keys) {
   if (error) throw error;
 }
 
-module.exports = { BUCKET, CONTENT_TYPES, publicUrl, list, listWithSize, upload, remove };
+// Chép một file trong bucket sang đường dẫn khác (dùng khi nhân bản sản phẩm kèm ảnh)
+async function copy(from, to) {
+  const { error } = await supabase.storage.from(BUCKET).copy(from, to);
+  if (error) throw error;
+}
+
+module.exports = { BUCKET, CONTENT_TYPES, publicUrl, list, listWithSize, upload, remove, copy };
